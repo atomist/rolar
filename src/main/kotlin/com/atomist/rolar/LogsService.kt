@@ -16,12 +16,11 @@ constructor(private var s3Client: AmazonS3Client,
 
     val mapper = jacksonObjectMapper()
 
-    fun retriveAllLogs(env: String, host: String): String {
+    fun retriveLogs(env: String, host: String): List<LogLine> {
         val logRefs = retrieveLogFileRefs(env, host)
         val logContents = logRefs.map { r -> retrieveLogFileContent(r) }
         val logLines = logContents.map { c -> mapper.readValue<List<LogLine>>(c) }
-        val formattedLogLines = logLines.flatten().map { l -> "${l.timestamp} - ${l.level}: ${l.message}" }
-        return formattedLogLines.joinToString("<br />")
+        return logLines.flatten()
     }
 
     private fun retrieveLogFileRefs(env: String, host: String): List<LogFileRef> {

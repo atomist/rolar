@@ -9,9 +9,9 @@ import org.springframework.web.bind.annotation.RestController
 class LogsController @Autowired
 constructor(private var logsService: LogsService) {
 
-    @RequestMapping("/logs/{env}/{host}")
-    fun logs(@PathVariable env: String, @PathVariable host: String): String {
-        return logsService.retriveAllLogs(env, host)
+    @RequestMapping("api/logs/{env}/{host}")
+    fun logs(@PathVariable env: String, @PathVariable host: String): List<LogLine> {
+        return logsService.retriveLogs(env, host)
     }
 
 }

@@ -1,6 +1,8 @@
 
 .mvn
 target
+node_modules
+src/main/resources/static/built
 
 ### IntelliJ IDEA ###
 .idea
