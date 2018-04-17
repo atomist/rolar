@@ -8,11 +8,13 @@ class App extends React.Component {
 
     constructor(props) {
         super(props);
-        this.state = {logs: []};
+        this.state = {
+            logs: []
+        };
     }
 
     componentDidMount() {
-        client({method: 'GET', path: '/api/logs/staging/Clays-MacBook-Pro.local'}).done(response => {
+        client({method: 'GET', path: '/api/logs/' + this.props.env + '/' + this.props.host}).done(response => {
             this.setState({logs: response.entity});
         });
     }
@@ -28,7 +30,7 @@ class LogList extends React.Component{
     render() {
         var logs = this.props.logs.map(log =>
             <Log key={log.timestamp + log.message} log={log}/>
-    );
+        );
         return (
             <table>
                 <tbody>
@@ -50,7 +52,5 @@ class Log extends React.Component{
     }
 }
 
-ReactDOM.render(
-    <App />,
-    document.getElementById('react')
-)
+var root = document.getElementById('react');
+ReactDOM.render(<App {...(root.dataset)} />, root);
