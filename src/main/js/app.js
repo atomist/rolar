@@ -14,8 +14,9 @@ class App extends React.Component {
     }
 
     componentDidMount() {
-        client({method: 'GET', path: '/api/logs/' + this.props.env + '/' + this.props.host}).done(response => {
-            this.setState({logs: response.entity});
+        var url = '/api/logs/' + this.props.path + '?after=' + this.props.after;
+        client({method: 'GET', path: url}).done(response => {
+            this.setState({logs: response.entity.logs});
         });
     }
 
