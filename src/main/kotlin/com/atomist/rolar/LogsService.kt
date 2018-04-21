@@ -17,14 +17,18 @@ constructor(private var s3Client: AmazonS3Client,
 
     val mapper = jacksonObjectMapper()
 
-    fun writeLogs(path: List<String>, incomingLog: IncomingLog, isClosed: Boolean = false) {
-        val key = LogKey(path, incomingLog.host, Date().time, isClosed)
+    fun writeLogs(path: List<String>, incomingLog: IncomingLog, isClosed: Boolean = false): Long {
+        val creationTime = Date().time
+        val key = LogKey(path, incomingLog.host, creationTime, isClosed)
         s3Client.putObject(bucketName, key.toKeyName(), mapper.writeValueAsString(incomingLog.content))
+        return creationTime
     }
 
     fun retriveLogs(path: List<String>, after: Long = 0): LogResults {
         val logRefs = retrieveLogFileRefs(path)
-        val newLogRefs = logRefs.filter { LogKey(it.key).time > after }
+        val newLogRefs = logRefs.filter {
+            LogKey(it.key).time > after
+        }
         if (newLogRefs.isEmpty()) return LogResults(null, listOf())
         val logContents = newLogRefs.map { r -> retrieveLogFileContent(r) }
         val logLines = logContents.map { c -> mapper.readValue<List<LogLine>>(c) }

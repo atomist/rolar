@@ -19,14 +19,14 @@ constructor(private var logsService: LogsService) {
     }
 
     @GetMapping(value = "api/reactive/logs/**", produces = arrayOf(MediaType.TEXT_EVENT_STREAM_VALUE))
-    fun getLogs(@RequestParam after: Long? = 0, request: HttpServletRequest): Flux<List<LogLine>> {
+    fun getLogs(@RequestParam after: Long? = 0, request: HttpServletRequest): Flux<LogResults> {
         val path = constructPathFromUriWildcardSuffix(request)
-        val interval = Flux.interval(Duration.ofSeconds(5))
-        val flux = Flux.generate<List<LogLine>, Long>(
+        val interval = Flux.interval(Duration.ZERO, Duration.ofSeconds(3))
+        val flux = Flux.generate<LogResults, Long>(
                 { after ?: 0 }
         ) { state, sink ->
             val logResults = logsService.retriveLogs(path, state)
-            sink.next(logResults.logs)
+            sink.next(logResults)
             if (logResults.lastKey != null) {
                 if (logResults.lastKey.isClosed) {
                     sink.complete()
@@ -36,13 +36,15 @@ constructor(private var logsService: LogsService) {
                 state
             }
         }
-        return Flux.zip(interval, flux).map { it.t2 }
+        return interval.zipWith(flux, 1).map { it.t2 }
     }
 
     @RequestMapping(value = "api/logs/**", method = arrayOf(RequestMethod.POST))
-    fun postLog(@RequestParam closed: String?, @RequestBody incomingLog: IncomingLog, request: HttpServletRequest) {
+    fun postLog(@RequestParam closed: String?,
+                @RequestBody incomingLog: IncomingLog,
+                request: HttpServletRequest): Long {
         val path = constructPathFromUriWildcardSuffix(request)
-        logsService.writeLogs(path, incomingLog, closed != null)
+        return logsService.writeLogs(path, incomingLog, closed != null)
     }
 
     private fun constructPathFromUriWildcardSuffix(request: HttpServletRequest): List<String> {

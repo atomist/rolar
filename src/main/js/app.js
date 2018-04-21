@@ -2,7 +2,6 @@
 
 const React = require('react');
 const ReactDOM = require('react-dom');
-const client = require('./client');
 
 class App extends React.Component {
 
@@ -14,9 +13,17 @@ class App extends React.Component {
     }
 
     componentDidMount() {
-        var url = '/api/logs/' + this.props.path + '?after=' + this.props.after;
-        client({method: 'GET', path: url}).done(response => {
-            this.setState({logs: response.entity.logs});
+        var url = '/api/reactive/logs/' + this.props.path + '?after=' + this.props.after;
+        var source = new EventSource(url);
+        source.addEventListener("message", logResultsEvent => {
+            var logResults = JSON.parse(logResultsEvent.data);
+            if (logResults.lastKey && logResults.lastKey.closed) {
+                source.close();
+            }
+            this.state.logs.push(...logResults.logs);
+            this.setState({
+                logs: this.state.logs
+            });
         });
     }
 
