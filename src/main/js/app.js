@@ -2,6 +2,7 @@
 
 const React = require('react');
 const ReactDOM = require('react-dom');
+const _ = require('lodash');
 
 class App extends React.Component {
 
@@ -13,12 +14,15 @@ class App extends React.Component {
     }
 
     componentDidMount() {
-        var url = '/api/reactive/logs/' + this.props.path + '?after=' + this.props.after;
-        var source = new EventSource(url);
+        const url = '/api/reactive/logs/' + this.props.path + '?after=' + this.props.after;
+        const source = new EventSource(url);
         source.addEventListener("message", logResultsEvent => {
-            var logResults = JSON.parse(logResultsEvent.data);
+            const logResults = JSON.parse(logResultsEvent.data);
             if (logResults.lastKey && logResults.lastKey.closed) {
-                source.close();
+                const specifiedPath = this.props.path.split("/");
+                if(_.isEqual(specifiedPath, logResults.lastKey.path)) {
+                    source.close();
+                }
             }
             this.state.logs.push(...logResults.logs);
             this.setState({
@@ -36,7 +40,7 @@ class App extends React.Component {
 
 class LogList extends React.Component{
     render() {
-        var logs = this.props.logs.map(log =>
+        const logs = this.props.logs.map(log =>
             <Log key={log.timestamp + log.message} log={log}/>
         );
         return (
@@ -60,5 +64,5 @@ class Log extends React.Component{
     }
 }
 
-var root = document.getElementById('react');
+const root = document.getElementById('react');
 ReactDOM.render(<App {...(root.dataset)} />, root);
