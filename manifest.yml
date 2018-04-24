@@ -1,0 +1,7 @@
+applications:
+- name: rolar
+  memory: 1024M
+  instances: 1
+  buildpack: https://github.com/cloudfoundry/java-buildpack.git
+  services:
+  - s3-logging

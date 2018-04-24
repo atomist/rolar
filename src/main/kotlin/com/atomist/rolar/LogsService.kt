@@ -4,7 +4,6 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.GetObjectRequest
 import com.amazonaws.services.s3.model.ListObjectsRequest
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.util.*
 import com.fasterxml.jackson.module.kotlin.*
@@ -13,9 +12,10 @@ import java.text.SimpleDateFormat
 @Service
 class LogsService @Autowired
 constructor(private var s3Client: AmazonS3Client,
-            @param:Value("\${aws.default-bucket}") private var bucketName: String) {
+            val s3LoggingServiceProperties: S3LoggingServiceProperties) {
 
     val mapper = jacksonObjectMapper()
+    val bucketName = s3LoggingServiceProperties.s3_logging_bucket
 
     fun writeLogs(path: List<String>, incomingLog: IncomingLog, isClosed: Boolean = false): Long {
         val creationTime = Date().time
