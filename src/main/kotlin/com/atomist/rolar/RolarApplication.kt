@@ -9,3 +9,4 @@ class RolarApplication
 fun main(args: Array<String>) {
     runApplication<RolarApplication>(*args)
 }
+

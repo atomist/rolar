@@ -21,7 +21,7 @@ constructor(private var logsService: LogsService) {
     @GetMapping(value = "api/reactive/logs/**", produces = arrayOf(MediaType.TEXT_EVENT_STREAM_VALUE))
     fun getLogs(@RequestParam after: Long? = 0, request: HttpServletRequest): Flux<LogResults> {
         val path = constructPathFromUriWildcardSuffix(request)
-        val interval = Flux.interval(Duration.ZERO, Duration.ofSeconds(3))
+        val interval = Flux.interval(Duration.ZERO, Duration.ofSeconds(2))
         val flux = Flux.generate<LogResults, Long>(
                 { after ?: 0 }
         ) { state, sink ->
@@ -36,7 +36,9 @@ constructor(private var logsService: LogsService) {
                 state
             }
         }
-        return interval.zipWith(flux, 1).map { it.t2 }
+        return interval.zipWith(flux, 1)
+                .map { it.t2 }
+                .filter{ logResults -> logResults.logs.isNotEmpty() }
     }
 
     @RequestMapping(value = "api/logs/**", method = arrayOf(RequestMethod.POST))
