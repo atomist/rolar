@@ -1,10 +1,17 @@
 
+body {
+    background-color: black;
+    color: lightgray;
+    font-family: monospace;
+}
+
 table {
     border-collapse: collapse;
 }
 
 td {
-    border: 1px solid #CCC;
+    border: 0px solid #CCC;
     padding: 0.2rem;
+    padding-right: 0.5rem;
     text-align: left;
 }
