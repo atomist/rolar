@@ -14,7 +14,11 @@ class App extends React.Component {
     }
 
     componentDidMount() {
-        const url = '/api/reactive/logs/' + this.props.path + '?after=' + this.props.after;
+        let auth = "";
+        if (this.props.auth) {
+            auth = `&auth=${this.props.auth}`
+        }
+        const url = '/api/reactive/logs/' + this.props.path + '?after=' + this.props.after + auth;
         const source = new EventSource(url);
         source.addEventListener("message", logResultsEvent => {
             const logResults = JSON.parse(logResultsEvent.data);

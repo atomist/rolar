@@ -7,17 +7,17 @@ import org.springframework.web.servlet.HandlerMapping
 import javax.servlet.http.HttpServletRequest
 import org.springframework.web.servlet.ModelAndView
 
-
-
 @Controller
 class ViewResolverController {
 
     @RequestMapping("logs/**")
     fun index(@RequestParam after: Long?, request: HttpServletRequest): ModelAndView {
         val path = constructPathFromUriWildcardSuffix(request)
+        val auth = request.getHeader("Authorization")
         val mav = ModelAndView("index")
         mav.addObject("path", path.joinToString("/"))
         mav.addObject("after", after ?: 0)
+        mav.addObject("auth", auth)
         return mav
     }
 

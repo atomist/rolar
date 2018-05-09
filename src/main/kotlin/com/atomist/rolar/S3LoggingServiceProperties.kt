@@ -7,4 +7,5 @@ import org.springframework.context.annotation.Configuration
 @ConfigurationProperties("vcap.services.s3-logging.credentials")
 data class S3LoggingServiceProperties(var aws_access_key_id: String = "",
                                       var aws_secret_access_key: String = "",
-                                      var s3_logging_bucket: String = "")
+                                      var s3_logging_bucket: String = "",
+                                      var auth_server_base_url: String = "")
