@@ -60,9 +60,9 @@ class Log extends React.Component{
     render() {
         return (
             <tr>
-                <td>{this.props.log.timestamp}</td>
-                <td>{this.props.log.level}</td>
-                <td>{this.props.log.message}</td>
+                <td><pre>{this.props.log.timestamp}</pre></td>
+                <td><pre>{this.props.log.level}</pre></td>
+                <td><pre>{this.props.log.message}</pre></td>
             </tr>
         )
     }
