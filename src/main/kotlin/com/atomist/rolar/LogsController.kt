@@ -18,7 +18,6 @@ constructor(private var logsService: LogsService) {
         return logsService.retriveLogs(path, after ?: 0)
     }
 
-    @CrossOrigin(origins = arrayOf("https://app-staging.atomist.services"), maxAge = 3600)
     @GetMapping(value = "api/reactive/logs/**", produces = arrayOf(MediaType.TEXT_EVENT_STREAM_VALUE))
     fun getLogs(@RequestParam after: Long? = 0, request: HttpServletRequest): Flux<LogResults> {
         val path = constructPathFromUriWildcardSuffix(request)
