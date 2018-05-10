@@ -5,10 +5,8 @@ import org.springframework.context.annotation.Configuration
 import JwtGateFilter
 import com.atomist.rolar.S3LoggingServiceProperties
 import org.springframework.boot.web.servlet.FilterRegistrationBean
-import org.springframework.web.servlet.config.annotation.EnableWebMvc
 
 @Configuration
-@EnableWebMvc
 class SecurityConfig(val s3LoggingServiceProperties: S3LoggingServiceProperties) {
 
     @Bean
