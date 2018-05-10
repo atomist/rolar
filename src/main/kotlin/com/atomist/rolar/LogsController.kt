@@ -8,6 +8,7 @@ import reactor.core.publisher.Flux
 import java.time.Duration
 import javax.servlet.http.HttpServletRequest
 
+@CrossOrigin
 @RestController
 class LogsController @Autowired
 constructor(private var logsService: LogsService) {
