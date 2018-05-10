@@ -22,8 +22,10 @@ class JwtGateFilter(val authServerBaseUrl: String) : GenericFilterBean() {
                           chain: FilterChain) {
         val request = req as HttpServletRequest
 
-        val authHeader = request.getHeader("Authorization") ?: request.getParameter("auth")
-        if (request.method == HttpMethod.GET.name && authHeader != null) {
+        val authHeader = request.getHeader("Authorization") ?: "Bearer ${request.getParameter("auth")}"
+        if (authHeader != null) {
+            chain.doFilter(req, res) // bypass auth check if no jwt is provided temporarily for backward compatibility
+        } else if (request.method == HttpMethod.GET.name) {
             val headers = HttpHeaders()
             headers.set("Authorization", authHeader)
             headers.set("Content-Type", "application/json")
@@ -51,11 +53,12 @@ class JwtGateFilter(val authServerBaseUrl: String) : GenericFilterBean() {
             val validRoots = persons.map { p -> p.team?.id }.filterNotNull()
 
             val root = req.servletPath.substringAfter("/logs/").substringBefore("/")
-            if (!validRoots.contains(root)) {
-                (res as HttpServletResponse).sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token for root '$root'")
+            if (validRoots.contains(root)) {
+                chain.doFilter(req, res)
+            } else {
+                (res as HttpServletResponse).sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                        "Invalid token for root '$root'")
             }
-        } else {
-            chain.doFilter(req, res)
         }
     }
 
