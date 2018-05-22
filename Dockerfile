@@ -1,6 +1,6 @@
 FROM maven
 
-MAINTAINER Clay McCoy <clay@atomist.com>
+LABEL maintainer="Clay McCoy <clay@atomist.com>"
 
 RUN mkdir -p /opt/app
 
