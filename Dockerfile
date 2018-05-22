@@ -8,10 +8,12 @@ WORKDIR /opt/app
 
 EXPOSE 8080
 
-#ENTRYPOINT ["/usr/bin/java", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-Xmx256m", "-Djava.security.egd=file:/dev/urandom"]
-
 COPY . /opt/app/
 
 RUN mvn package
 
-CMD ["mvn", "spring-boot:run"]
+COPY target/rolar.jar spring-boot.jar
+
+ENTRYPOINT ["/usr/bin/java", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-Xmx256m", "-Djava.security.egd=file:/dev/urandom"]
+
+CMD ["-jar", "spring-boot.jar"]
