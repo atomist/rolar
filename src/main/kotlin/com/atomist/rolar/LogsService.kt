@@ -30,9 +30,10 @@ constructor(private var s3Client: AmazonS3Client,
             LogKey(it.key).time > after
         }
         if (newLogRefs.isEmpty()) return LogResults(null, listOf())
-        val logContents = newLogRefs.sortedBy { lf -> lf.lastModified }.map { r -> retrieveLogFileContent(r) }
-        val logLines = logContents.map { c -> mapper.readValue<List<LogLine>>(c) }
-        return LogResults(LogKey(newLogRefs.last().key), logLines.flatten())
+        val logContents = newLogRefs.map { r -> retrieveLogFileContent(r) }
+        val logLines = logContents.map { c -> mapper.readValue<List<LogLine>>(c) }.flatten()
+        val sortedLogLines = logLines.sortedBy { ll -> ll.timestamp }
+        return LogResults(LogKey(newLogRefs.last().key), sortedLogLines)
     }
 
     private fun retrieveLogFileRefs(path: List<String>): List<LogFileRef> {
