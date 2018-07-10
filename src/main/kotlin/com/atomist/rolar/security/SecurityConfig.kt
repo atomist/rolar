@@ -13,10 +13,10 @@ class SecurityConfig(val s3LoggingServiceProperties: S3LoggingServiceProperties)
     fun jwtFilter(): FilterRegistrationBean<JwtGateFilter> {
         val baseUrl = s3LoggingServiceProperties.auth_server_base_url
         val registrationBean = FilterRegistrationBean<JwtGateFilter>()
-        registrationBean.filter = JwtGateFilter(baseUrl ?: "no base url")
+        registrationBean.filter = JwtGateFilter(baseUrl)
         registrationBean.addUrlPatterns("/api/*")
         registrationBean.addUrlPatterns("/logs/*")
-        if (baseUrl == null) {
+        if (baseUrl.isEmpty()) {
             registrationBean.isEnabled = false
         }
         return registrationBean

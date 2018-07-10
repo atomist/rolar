@@ -23,9 +23,7 @@ class JwtGateFilter(val authServerBaseUrl: String) : GenericFilterBean() {
         val request = req as HttpServletRequest
 
         val authHeader = request.getHeader("Authorization") ?: "Bearer ${request.getParameter("auth")}"
-        if (authHeader != null) {
-            chain.doFilter(req, res) // bypass auth check if no jwt is provided temporarily for backward compatibility
-        } else if (request.method == HttpMethod.GET.name) {
+        if (request.method == HttpMethod.GET.name) {
             val headers = HttpHeaders()
             headers.set("Authorization", authHeader)
             headers.set("Content-Type", "application/json")
