@@ -1,15 +1,17 @@
-'use strict';
+import * as React from 'react';
+import * as ReactDOM from 'react-dom';
+import * as _ from 'lodash';
 
-const React = require('react');
-const ReactDOM = require('react-dom');
-const _ = require('lodash');
+type AppState = {
+    logs: Array<LogRow>;
+}
 
-class App extends React.Component {
+class App extends React.Component<any, AppState> {
 
-    constructor(props) {
+    constructor(props: any) {
         super(props);
         this.state = {
-            logs: []
+            logs: new Array<LogRow>()
         };
     }
 
@@ -20,7 +22,7 @@ class App extends React.Component {
         }
         const url = '/api/reactive/logs/' + this.props.path + '?after=' + this.props.after + auth;
         const source = new EventSource(url);
-        source.addEventListener("message", logResultsEvent => {
+        source.addEventListener("message", (logResultsEvent: MessageEvent) => {
             const logResults = JSON.parse(logResultsEvent.data);
             if (logResults.lastKey && logResults.lastKey.closed) {
                 const specifiedPath = this.props.path.split("/");
@@ -42,7 +44,21 @@ class App extends React.Component {
     }
 }
 
-class LogList extends React.Component{
+class LogRow {
+    timestamp: string;
+    level: string;
+    message: string;
+}
+
+type LogListProps = {
+    logs: Array<LogRow>;
+}
+
+class LogList extends React.Component<LogListProps, any> {
+    constructor(props: LogListProps) {
+        super(props);
+    }
+
     render() {
         const logs = this.props.logs.map(log =>
             <Log key={log.timestamp + log.message} log={log}/>
@@ -56,7 +72,16 @@ class LogList extends React.Component{
         )
     }
 }
-class Log extends React.Component{
+
+type LogProps = {
+    log: LogRow;
+}
+
+class Log extends React.Component<LogProps, any> {
+    constructor(props: LogProps) {
+        super(props);
+    }
+
     render() {
         return (
             <tr>

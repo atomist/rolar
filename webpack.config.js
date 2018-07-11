@@ -1,26 +1,25 @@
-
-var path = require('path');
-
 module.exports = {
-    entry: './src/main/js/app.js',
-    devtool: 'sourcemaps',
-    cache: true,
-    debug: true,
+    entry: "./src/main/js/app.tsx",
     output: {
-        path: __dirname,
-        filename: './src/main/resources/static/built/bundle.js'
+        filename: "bundle.js",
+        path: __dirname + "/src/main/resources/static/built"
     },
+
+    // Enable sourcemaps for debugging webpack's output.
+    devtool: "source-map",
+
+    resolve: {
+        // Add '.ts' and '.tsx' as resolvable extensions.
+        extensions: [".ts", ".tsx", ".js", ".json"]
+    },
+
     module: {
-        loaders: [
-            {
-                test: path.join(__dirname, '.'),
-                exclude: /(node_modules)/,
-                loader: 'babel',
-                query: {
-                    cacheDirectory: true,
-                    presets: ['es2015', 'react']
-                }
-            }
+        rules: [
+            // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
+            { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
+
+            // All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
+            { enforce: "pre", test: /\.js$/, loader: "source-map-loader" }
         ]
-    }
+    },
 };
