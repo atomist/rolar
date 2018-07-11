@@ -57,6 +57,8 @@ class JwtGateFilter(val authServerBaseUrl: String) : GenericFilterBean() {
                 (res as HttpServletResponse).sendError(HttpServletResponse.SC_UNAUTHORIZED,
                         "Invalid token for root '$root'")
             }
+        } else {
+            chain.doFilter(req, res)
         }
     }
 
