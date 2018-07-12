@@ -5,7 +5,6 @@ import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.HandlerMapping
 import reactor.core.publisher.Flux
-import java.time.Duration
 import javax.servlet.http.HttpServletRequest
 
 @CrossOrigin
@@ -14,32 +13,20 @@ class LogsController @Autowired
 constructor(private var logsService: LogsService) {
 
     @RequestMapping("api/logs/**")
-    fun getLog(@RequestParam after: Long?, request: HttpServletRequest): LogResults {
+    fun getLog(@RequestParam after: Long?,
+               @RequestParam prioritize: Int? = 0,
+               request: HttpServletRequest): List<LogResults> {
         val path = constructPathFromUriWildcardSuffix(request)
-        return logsService.retriveLogs(path, after ?: 0)
+        return logsService.logResultEvents(path, after ?: 0, prioritize ?: 0)
+                .collectList().block()!!.toList()
     }
 
     @GetMapping(value = "api/reactive/logs/**", produces = arrayOf(MediaType.TEXT_EVENT_STREAM_VALUE))
-    fun getLogs(@RequestParam after: Long? = 0, request: HttpServletRequest): Flux<LogResults> {
+    fun getLogs(@RequestParam after: Long? = 0,
+                @RequestParam prioritize: Int? = 0,
+                request: HttpServletRequest): Flux<LogResults> {
         val path = constructPathFromUriWildcardSuffix(request)
-        val logRetriver = Flux.generate<LogResults, Long>(
-                { after ?: 0 }
-        ) { state, sink ->
-            val logResults = logsService.retriveLogs(path, state)
-            sink.next(logResults)
-            if (logResults.lastKey != null) {
-                if (logResults.lastKey.isClosed) {
-                    sink.complete()
-                }
-                logResults.lastKey.time
-            } else {
-                state
-            }
-        }
-        return logRetriver.delayElements(Duration.ofSeconds(2))
-                .filter {
-                    logResults -> logResults.logs.isNotEmpty()
-                }
+        return logsService.logResultEvents(path, after ?: 0, prioritize ?: 0)
     }
 
     @RequestMapping(value = "api/logs/**", method = arrayOf(RequestMethod.POST))

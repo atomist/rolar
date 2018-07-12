@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.util.*
 import com.fasterxml.jackson.module.kotlin.*
+import reactor.core.publisher.Flux
 import java.text.SimpleDateFormat
+import java.time.Duration
 
 @Service
 class LogsService @Autowired
@@ -24,16 +26,43 @@ constructor(private var s3Client: AmazonS3Client,
         return creationTime
     }
 
-    fun retriveLogs(path: List<String>, after: Long = 0): LogResults {
-        val logRefs = retrieveLogFileRefs(path)
-        val newLogRefs = logRefs.filter {
-            LogKey(it.key).time > after
+    fun logResultEvents(path: List<String>, after: Long = 0L, prioritizeLastCount: Int = 0): Flux<LogResults> {
+        val logFileRefGroupEvents = Flux.generate<LogFileRefGroup, Long>(
+                { after }
+        ) { state, sink ->
+            val logFileRefs = retrieveLogFileRefs(path)
+            if (logFileRefs.isEmpty()) {
+                after
+            } else {
+                val lastKey = LogKey(logFileRefs.last().key)
+                sink.next(LogFileRefGroup(logFileRefs, state))
+                if (lastKey.isClosed) {
+                    sink.complete()
+                }
+                lastKey.time
+            }
         }
-        if (newLogRefs.isEmpty()) return LogResults(null, listOf())
-        val logContents = newLogRefs.map { r -> retrieveLogFileContent(r) }
-        val logLines = logContents.map { c -> mapper.readValue<List<LogLine>>(c) }.flatten()
-        val sortedLogLines = logLines.sortedBy { ll -> ll.timestamp }
-        return LogResults(LogKey(newLogRefs.last().key), sortedLogLines)
+        return logFileRefGroupEvents.delayElements(Duration.ofSeconds(2))
+            .flatMapSequential { lfrg ->
+                val logRefs: List<LogRef> = if (lfrg.after == 0L) {
+                    if (prioritizeLastCount > 0) {
+                        val recent = lfrg.refs.takeLast(prioritizeLastCount).map { l -> LogRef(l) }
+                        val history = lfrg.refs.dropLast(prioritizeLastCount).reversed().map { l ->
+                            LogRef(l, true)
+                        }
+                        recent + history
+                    } else {
+                        lfrg.refs.map { l -> LogRef(l) }
+                    }
+                } else {
+                    lfrg.refs.filter {  LogKey(it.key).time > lfrg.after }.map { l -> LogRef(l) }
+                }
+                Flux.fromIterable(logRefs)
+            }.map { logRef ->
+                val logContent = retrieveLogFileContent(logRef.file)
+                val logLines = mapper.readValue<List<LogLine>>(logContent)
+                LogResults(LogKey(logRef.file.key), logLines, logRef.prepend)
+            }
     }
 
     private fun retrieveLogFileRefs(path: List<String>): List<LogFileRef> {
@@ -85,12 +114,18 @@ data class LogKey(
 
 data class LogResults(
     val lastKey: LogKey?,
-    val logs: List<LogLine>
+    val logs: List<LogLine>,
+    val prepend: Boolean = false
 )
 
 data class IncomingLog(
         val host: String,
         val content: List<LogLine>
+)
+
+data class LogRef(
+        val file: LogFileRef,
+        val prepend: Boolean = false
 )
 
 data class LogFileRef(
@@ -99,6 +134,10 @@ data class LogFileRef(
     val size: Long,
     val lastModified: Date,
     val etag: String)
+
+data class LogFileRefGroup (
+        val refs: List<LogFileRef>,
+        val after: Long)
 
 
 data class LogLine(
