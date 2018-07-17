@@ -8,15 +8,8 @@ This page details all runtime OSS dependencies of `rolar`.
 
 | License | Count |
 |---------|-------|
-|[Custom: http://localhost](#custom-httplocalhost)|1|
 |[GPL-2.0](#gpl-20)|1|
 |[MIT](#mit)|21|
-
-#### Custom: http://localhost
-
-| Name | Version | Publisher | Repository |
-|------|---------|-----------|------------|
-|`rolar`|`0.0.1`|||
 
 #### GPL-2.0
 GNU General Public License v2.0 only - [http://www.gnu.org/licenses/old-licenses/gpl-2.0-standalone.html](http://www.gnu.org/licenses/old-licenses/gpl-2.0-standalone.html)
