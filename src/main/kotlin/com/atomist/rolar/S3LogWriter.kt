@@ -14,7 +14,7 @@ constructor(private val s3Client: AmazonS3Client,
     private val bucketName = s3LoggingServiceProperties.s3_logging_bucket
 
     fun write(key: LogKey, content: List<LogLine>) {
-        s3Client.putObject(bucketName, key.toKeyName(), mapper.writeValueAsString(content))
+        s3Client.putObject(bucketName, key.toS3Key(), mapper.writeValueAsString(content))
     }
 
 }

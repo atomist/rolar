@@ -21,16 +21,16 @@ constructor(private val s3LogReader: S3LogReader,
     }
 
     fun logResultEvents(path: List<String>, after: Long = 0L,
-                        prioritizeLastCount: Int = 0): Flux<LogResults> {
-        val logFileRefGroupEvents = Flux.generate<LogFileRefGroup, Long>(
+                        prioritizeRecent: Int = 0): Flux<LogResults> {
+        val logFileRefGroupEvents = Flux.generate<LogKeysAfter, Long>(
                 { after }
         ) { state, sink ->
-            val logFileRefs = s3LogReader.readLogFileRefs(path)
-            if (logFileRefs.isEmpty()) {
+            val logKeys = s3LogReader.readLogKeys(path)
+            if (logKeys.isEmpty()) {
                 after
             } else {
-                val lastKey = LogKey(logFileRefs.last().key)
-                sink.next(LogFileRefGroup(logFileRefs, state))
+                val lastKey = logKeys.last()
+                sink.next(LogKeysAfter(logKeys, state))
                 if (lastKey.isClosed && lastKey.path == path) {
                     sink.complete()
                 }
@@ -38,21 +38,26 @@ constructor(private val s3LogReader: S3LogReader,
             }
         }
         return logFileRefGroupEvents.delayElements(delay)
-            .flatMapSequential { lfrg ->
-                val logRefs: List<LogRef> = if (lfrg.after == 0L && prioritizeLastCount != 0) {
-                    lfrg.refs.mapIndexed { i, l ->
-                        LogRef(l, i < (lfrg.refs.size - prioritizeLastCount))
-                    }.sortedBy { lr -> lr.prepend }
-                } else {
-                    lfrg.refs.filter {  LogKey(it.key).time > lfrg.after }.map { l -> LogRef(l) }
-                }
-                Flux.fromIterable(logRefs)
+            .flatMapSequential { lka ->
+                val logKeys = if (lka.after == 0L && prioritizeRecent != 0) {
+                        val orderedLogKeys = lka.keys.mapIndexed { i, l ->
+                            l.copy(prepend = i < (lka.keys.size - prioritizeRecent))
+                        }.sortedBy { it.prepend }
+                        if (lka.keys.last().isClosed) {
+                            orderedLogKeys.mapIndexed { i, lk -> lk.copy(isClosed = i + 1 >= lka.keys.size) }
+                        }else {
+                            orderedLogKeys
+                        }
+                    } else {
+                        lka.keys.filter {  it.time > lka.after }
+                    }
+                Flux.fromIterable(logKeys)
             }
             .groupBy { lr -> lr.prepend }
             .flatMap { gf ->
-                gf.map { logRef ->
-                    val logLines = s3LogReader.readLogFileContent(logRef.file)
-                    LogResults(LogKey(logRef.file.key), logLines, logRef.prepend)
+                gf.map { logKey ->
+                    val logLines = s3LogReader.readLogContent(logKey)
+                    LogResults(logKey, logLines)
                 }
             }
     }
@@ -63,32 +68,44 @@ data class LogKey(
         val path: List<String>,
         val host: String,
         val time: Long,
-        val isClosed: Boolean
+        val isClosed: Boolean,
+        val prepend: Boolean = false,
+        val s3Key: String? = null
 ) {
     companion object {
         val gmtFormat = SimpleDateFormat("yyyy-MM-dd_HH.mm.ss.SSS")
         init {
             gmtFormat.timeZone = TimeZone.getTimeZone("GMT")
         }
+        fun fromS3Key(key: String): LogKey {
+            return LogKey(
+                key.substringBefore("Z_").split("/").dropLast(1),
+                key.substringAfter("Z_").substringBeforeLast("_CLOSED.log").substringBeforeLast(".log"),
+                gmtFormat.parse(key.substringBefore("Z_").substringAfterLast("/")).time,
+                key.endsWith("CLOSED.log"),
+            false,
+                key
+            )
+        }
     }
 
-    constructor(key: String): this(
-            key.substringBefore("Z_").split("/").dropLast(1),
-            key.substringAfter("Z_").substringBeforeLast("_CLOSED.log").substringBeforeLast(".log"),
-            gmtFormat.parse(key.substringBefore("Z_").substringAfterLast("/")).time,
-            key.endsWith("CLOSED.log")
-    )
-
-    fun toKeyName(): String {
-        val closeSuffix = if (isClosed) { "_CLOSED" } else { "" }
-        return "${path.joinToString("/")}/${gmtFormat.format(Date(time))}Z_${host}${closeSuffix}.log"
+    fun toS3Key(): String {
+        return if (s3Key != null) {
+            s3Key
+        } else {
+            val closeSuffix = if (isClosed) {
+                "_CLOSED"
+            } else {
+                ""
+            }
+            "${path.joinToString("/")}/${gmtFormat.format(Date(time))}Z_$host$closeSuffix.log"
+        }
     }
 }
 
 data class LogResults(
-    val lastKey: LogKey?,
-    val logs: List<LogLine>,
-    val prepend: Boolean = false
+    val lastKey: LogKey,
+    val logs: List<LogLine>
 )
 
 data class IncomingLog(
@@ -96,20 +113,8 @@ data class IncomingLog(
         val content: List<LogLine>
 )
 
-data class LogRef(
-        val file: LogFileRef,
-        val prepend: Boolean = false
-)
-
-data class LogFileRef(
-    val bucketName: String,
-    val key: String,
-    val size: Long,
-    val lastModified: Date,
-    val etag: String)
-
-data class LogFileRefGroup (
-        val refs: List<LogFileRef>,
+data class LogKeysAfter (
+        val keys: List<LogKey>,
         val after: Long)
 
 

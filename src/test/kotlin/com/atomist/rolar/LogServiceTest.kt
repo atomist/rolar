@@ -4,50 +4,43 @@ import com.nhaarman.mockito_kotlin.*
 import io.kotlintest.specs.StringSpec
 import reactor.test.StepVerifier
 import java.time.Duration
-import java.util.*
 
 class LogServiceTest : StringSpec({
 
     fun constructLogResults(batch: Int, index: Int, closed: Boolean = true, prepend: Boolean = false): LogResults {
         return LogResults(
-                LogKey(
-                        listOf("a", "b", "c"),
-                        "mbp",
-                        1531742400000 + (batch * 1000) + index,
-                        closed
-                ),
+                LogKeyMaker().constructLogKey(batch, index, closed, prepend),
                 listOf(
                         LogLine(
                                 "info",
                                 "log message $batch.$index",
                                 "$batch.$index"
                         )
-                ),
-                prepend
+                )
         )
     }
 
     val s3LogReader: S3LogReader = mock()
 
     doAnswer {
-        val lfr = it.arguments[0] as LogFileRef
+        val lk = it.arguments[0] as LogKey
         listOf(
                 LogLine(
                         "info",
-                        "log message ${lfr.etag}",
-                        lfr.etag
+                        "log message ${lk.host}",
+                        lk.host
                 )
         )
-    }.whenever(s3LogReader).readLogFileContent(any())
+    }.whenever(s3LogReader).readLogContent(any())
 
     val s3LogWriter: S3LogWriter = mock()
 
     val logService = LogsService(s3LogReader, s3LogWriter, Duration.ZERO)
 
     "read a single log message" {
-        val lfrm = LogFileRefMaker()
-        whenever(s3LogReader.readLogFileRefs(any())).doReturn(
-                lfrm.nextLogFileRef(1)
+        val lkm = LogKeyMaker()
+        whenever(s3LogReader.readLogKeys(any())).doReturn(
+                lkm.nextLogKeyBatch(1)
         )
 
         val logResults = logService.logResultEvents(listOf("a", "b", "c"), 0)
@@ -57,10 +50,10 @@ class LogServiceTest : StringSpec({
     }
 
     "read many log message across batches" {
-        val lfrm = LogFileRefMaker()
-        whenever(s3LogReader.readLogFileRefs(any())).doReturn(
-                lfrm.nextLogFileRef(2, false),
-                lfrm.nextLogFileRef(1, true)
+        val lkm = LogKeyMaker()
+        whenever(s3LogReader.readLogKeys(any())).doReturn(
+                lkm.nextLogKeyBatch(2, false),
+                lkm.nextLogKeyBatch(1, true)
         )
 
         val logResults = logService.logResultEvents(listOf("a", "b", "c"), 0)
@@ -71,29 +64,29 @@ class LogServiceTest : StringSpec({
                 .verifyComplete()
     }
 
-    "prioritize recent logs" {
-        val lfrm = LogFileRefMaker()
-        whenever(s3LogReader.readLogFileRefs(any())).doReturn(
-                lfrm.nextLogFileRef(7, true)
+    "prioritize recent logs, ensure close is only on last one received" {
+        val lkm = LogKeyMaker()
+        whenever(s3LogReader.readLogKeys(any())).doReturn(
+                lkm.nextLogKeyBatch(7, true)
         )
 
         val logResults = logService.logResultEvents(listOf("a", "b", "c"), 0, 2)
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 6, false))
-                .expectNext(constructLogResults(1, 7, true))
+                .expectNext(constructLogResults(1, 7, false))
                 .expectNext(constructLogResults(1, 1, false, true))
                 .expectNext(constructLogResults(1, 2, false, true))
                 .expectNext(constructLogResults(1, 3, false, true))
                 .expectNext(constructLogResults(1, 4, false, true))
-                .expectNext(constructLogResults(1, 5, false, true))
+                .expectNext(constructLogResults(1, 5, true, true))
                 .verifyComplete()
     }
 
     "prioritize recent logs and accept next set of logs" {
-        val lfrm = LogFileRefMaker()
-        whenever(s3LogReader.readLogFileRefs(any())).doReturn(
-                lfrm.nextLogFileRef(7, false),
-                lfrm.nextLogFileRef(2, true)
+        val lkm = LogKeyMaker()
+        whenever(s3LogReader.readLogKeys(any())).doReturn(
+                lkm.nextLogKeyBatch(7, false),
+                lkm.nextLogKeyBatch(2, true)
         )
 
         val logResults = logService.logResultEvents(listOf("a", "b", "c"), 0, 2)
@@ -112,22 +105,23 @@ class LogServiceTest : StringSpec({
 
 })
 
-class LogFileRefMaker {
-    var nextLogFileRefBatch = 0
+class LogKeyMaker {
+    var nextKeyBatch = 0
 
-    fun nextLogFileRef(count: Int, close: Boolean = true): List<LogFileRef> {
-        nextLogFileRefBatch++
+    fun nextLogKeyBatch(count: Int, close: Boolean = true): List<LogKey> {
+        nextKeyBatch++
         return (1..count).map { i ->
-            val batch = nextLogFileRefBatch.toString().padStart(2, '0')
-            val index = i.toString().padStart(3, '0')
-            val closed = if (close && i == count) "_CLOSED" else ""
-            LogFileRef(
-                    "bucket",
-                    "a/b/c/2018-07-16_12.00.$batch.${index}Z_mbp$closed.log",
-                    1,
-                    Date(),
-                    "$nextLogFileRefBatch.$i"
-            )
+            constructLogKey(nextKeyBatch, i, close && i == count)
         }
+    }
+
+    fun constructLogKey(batch: Int, index: Int, closed: Boolean = true, prepend: Boolean = false): LogKey {
+        return LogKey(
+            listOf("a", "b", "c"),
+            "$batch.$index",
+            1531742400000 + (batch * 1000) + index,
+            closed,
+            prepend
+        )
     }
 }

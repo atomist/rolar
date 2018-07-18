@@ -16,22 +16,16 @@ constructor(private val s3Client: AmazonS3Client,
     private val mapper = jacksonObjectMapper()
     private val bucketName = s3LoggingServiceProperties.s3_logging_bucket
 
-    fun readLogFileRefs(path: List<String>): List<LogFileRef> {
+    fun readLogKeys(path: List<String>): List<LogKey> {
         val objectListing = s3Client.listObjects(ListObjectsRequest()
                 .withBucketName(bucketName).withPrefix("${path.joinToString("/")}/"))
         return objectListing.getObjectSummaries().map { s ->
-            LogFileRef(
-                s.bucketName,
-                s.key,
-                s.size,
-                s.lastModified,
-                s.eTag
-            )
+            LogKey.fromS3Key(s.key)
         }
     }
 
-    fun readLogFileContent(logFileRef: LogFileRef): List<LogLine> {
-        val s3Object = s3Client.getObject(GetObjectRequest(bucketName, logFileRef.key))
+    fun readLogContent(logKey: LogKey): List<LogLine> {
+        val s3Object = s3Client.getObject(GetObjectRequest(bucketName, logKey.toS3Key()))
         val logContent = s3Object.objectContent.bufferedReader().use { it.readText() }
         return mapper.readValue(logContent)
     }
