@@ -74,20 +74,42 @@ class LogServiceTest : StringSpec({
     "prioritize recent logs" {
         val lfrm = LogFileRefMaker()
         whenever(s3LogReader.readLogFileRefs(any())).doReturn(
-                lfrm.nextLogFileRef(7)
+                lfrm.nextLogFileRef(7, true)
         )
 
         val logResults = logService.logResultEvents(listOf("a", "b", "c"), 0, 2)
         StepVerifier.create(logResults)
+                .expectNext(constructLogResults(1, 6, false))
+                .expectNext(constructLogResults(1, 7, true))
                 .expectNext(constructLogResults(1, 1, false, true))
                 .expectNext(constructLogResults(1, 2, false, true))
                 .expectNext(constructLogResults(1, 3, false, true))
                 .expectNext(constructLogResults(1, 4, false, true))
                 .expectNext(constructLogResults(1, 5, false, true))
-                .expectNext(constructLogResults(1, 6, false))
-                .expectNext(constructLogResults(1, 7, true))
                 .verifyComplete()
     }
+
+    "prioritize recent logs and accept next set of logs" {
+        val lfrm = LogFileRefMaker()
+        whenever(s3LogReader.readLogFileRefs(any())).doReturn(
+                lfrm.nextLogFileRef(7, false),
+                lfrm.nextLogFileRef(2, true)
+        )
+
+        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 0, 2)
+        StepVerifier.create(logResults)
+                .expectNext(constructLogResults(1, 6, false))
+                .expectNext(constructLogResults(1, 7, false))
+                .expectNext(constructLogResults(1, 1, false, true))
+                .expectNext(constructLogResults(1, 2, false, true))
+                .expectNext(constructLogResults(1, 3, false, true))
+                .expectNext(constructLogResults(1, 4, false, true))
+                .expectNext(constructLogResults(1, 5, false, true))
+                .expectNext(constructLogResults(2, 1, false))
+                .expectNext(constructLogResults(2, 2, true))
+                .verifyComplete()
+    }
+
 })
 
 class LogFileRefMaker {

@@ -40,14 +40,15 @@ constructor(private val s3LogReader: S3LogReader,
         return logFileRefGroupEvents.delayElements(delay)
             .flatMapSequential { lfrg ->
                 val logRefs: List<LogRef> = if (lfrg.after == 0L && prioritizeLastCount != 0) {
-                        lfrg.refs.mapIndexed { i, l ->
-                            LogRef(l, i < (lfrg.refs.size - prioritizeLastCount))
-                        }
-                    } else {
-                        lfrg.refs.filter {  LogKey(it.key).time > lfrg.after }.map { l -> LogRef(l) }
-                    }
+                    lfrg.refs.mapIndexed { i, l ->
+                        LogRef(l, i < (lfrg.refs.size - prioritizeLastCount))
+                    }.sortedBy { lr -> lr.prepend }
+                } else {
+                    lfrg.refs.filter {  LogKey(it.key).time > lfrg.after }.map { l -> LogRef(l) }
+                }
                 Flux.fromIterable(logRefs)
-            }.groupBy { lr -> lr.prepend }
+            }
+            .groupBy { lr -> lr.prepend }
             .flatMap { gf ->
                 gf.map { logRef ->
                     val logLines = s3LogReader.readLogFileContent(logRef.file)
