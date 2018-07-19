@@ -74,11 +74,11 @@ class LogServiceTest : StringSpec({
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 6, false))
                 .expectNext(constructLogResults(1, 7, false))
-                .expectNext(constructLogResults(1, 1, false, true))
-                .expectNext(constructLogResults(1, 2, false, true))
-                .expectNext(constructLogResults(1, 3, false, true))
+                .expectNext(constructLogResults(1, 5, false, true))
                 .expectNext(constructLogResults(1, 4, false, true))
-                .expectNext(constructLogResults(1, 5, true, true))
+                .expectNext(constructLogResults(1, 3, false, true))
+                .expectNext(constructLogResults(1, 2, false, true))
+                .expectNext(constructLogResults(1, 1, true, true))
                 .verifyComplete()
     }
 
@@ -93,11 +93,11 @@ class LogServiceTest : StringSpec({
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 6, false))
                 .expectNext(constructLogResults(1, 7, false))
-                .expectNext(constructLogResults(1, 1, false, true))
-                .expectNext(constructLogResults(1, 2, false, true))
-                .expectNext(constructLogResults(1, 3, false, true))
-                .expectNext(constructLogResults(1, 4, false, true))
                 .expectNext(constructLogResults(1, 5, false, true))
+                .expectNext(constructLogResults(1, 4, false, true))
+                .expectNext(constructLogResults(1, 3, false, true))
+                .expectNext(constructLogResults(1, 2, false, true))
+                .expectNext(constructLogResults(1, 1, false, true))
                 .expectNext(constructLogResults(2, 1, false))
                 .expectNext(constructLogResults(2, 2, true))
                 .verifyComplete()
@@ -119,6 +119,7 @@ class LogKeyMaker {
         return LogKey(
             listOf("a", "b", "c"),
             "$batch.$index",
+            1531742400000 + (batch * 1000) + index,
             1531742400000 + (batch * 1000) + index,
             closed,
             prepend

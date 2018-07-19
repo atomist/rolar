@@ -17,10 +17,17 @@ constructor(private val s3Client: AmazonS3Client,
     private val bucketName = s3LoggingServiceProperties.s3_logging_bucket
 
     fun readLogKeys(path: List<String>): List<LogKey> {
-        val objectListing = s3Client.listObjects(ListObjectsRequest()
-                .withBucketName(bucketName).withPrefix("${path.joinToString("/")}/"))
-        return objectListing.getObjectSummaries().map { s ->
-            LogKey.fromS3Key(s.key)
+        val request = ListObjectsRequest()
+                .withBucketName(bucketName)
+                .withPrefix("${path.joinToString("/")}/")
+        var objectListing = s3Client.listObjects(request)
+        val allObjectSummaries = objectListing.getObjectSummaries()
+        while (objectListing.nextMarker != null) {
+            objectListing = s3Client.listObjects(request.withMarker(objectListing.nextMarker))
+            allObjectSummaries.addAll(objectListing.getObjectSummaries())
+        }
+        return allObjectSummaries.map { s ->
+            LogKey.fromS3ObjectSummary(s)
         }
     }
 

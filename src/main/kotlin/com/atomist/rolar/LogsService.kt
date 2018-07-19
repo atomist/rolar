@@ -1,5 +1,6 @@
 package com.atomist.rolar
 
+import com.amazonaws.services.s3.model.S3ObjectSummary
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.util.*
@@ -15,7 +16,7 @@ constructor(private val s3LogReader: S3LogReader,
 
     fun writeLogs(path: List<String>, incomingLog: IncomingLog, isClosed: Boolean = false): Long {
         val creationTime = Date().time
-        val key = LogKey(path, incomingLog.host, creationTime, isClosed)
+        val key = LogKey(path, incomingLog.host, creationTime, 0, isClosed)
         s3LogWriter.write(key, incomingLog.content)
         return creationTime
     }
@@ -40,17 +41,20 @@ constructor(private val s3LogReader: S3LogReader,
         return logFileRefGroupEvents.delayElements(delay)
             .flatMapSequential { lka ->
                 val logKeys = if (lka.after == 0L && prioritizeRecent != 0) {
-                        val orderedLogKeys = lka.keys.mapIndexed { i, l ->
-                            l.copy(prepend = i < (lka.keys.size - prioritizeRecent))
-                        }.sortedBy { it.prepend }
-                        if (lka.keys.last().isClosed) {
-                            orderedLogKeys.mapIndexed { i, lk -> lk.copy(isClosed = i + 1 >= lka.keys.size) }
-                        }else {
-                            orderedLogKeys
-                        }
+                    val isLogClosed = lka.keys.last().isClosed
+                    val recentLogs = lka.keys.takeLast(prioritizeRecent)
+                    val reversedHistory = lka.keys.take(lka.keys.size - prioritizeRecent)
+                            .reversed()
+                            .map { it.copy(prepend = true)}
+                    val orderedLogKeys = recentLogs + reversedHistory
+                    if (isLogClosed) {
+                        orderedLogKeys.mapIndexed { i, lk -> lk.copy(isClosed = i + 1 >= lka.keys.size) }
                     } else {
-                        lka.keys.filter {  it.time > lka.after }
+                        orderedLogKeys
                     }
+                } else {
+                    lka.keys.filter {  it.time > lka.after }
+                }
                 Flux.fromIterable(logKeys)
             }
             .groupBy { lr -> lr.prepend }
@@ -68,19 +72,22 @@ data class LogKey(
         val path: List<String>,
         val host: String,
         val time: Long,
+        val lastModified: Long,
         val isClosed: Boolean,
         val prepend: Boolean = false,
-        val s3Key: String? = null
+        private  val s3Key: String? = null
 ) {
     companion object {
         val gmtFormat = SimpleDateFormat("yyyy-MM-dd_HH.mm.ss.SSS")
         init {
             gmtFormat.timeZone = TimeZone.getTimeZone("GMT")
         }
-        fun fromS3Key(key: String): LogKey {
+        fun fromS3ObjectSummary(s3ObjectSummary: S3ObjectSummary): LogKey {
+            val key = s3ObjectSummary.key
             return LogKey(
                 key.substringBefore("Z_").split("/").dropLast(1),
                 key.substringAfter("Z_").substringBeforeLast("_CLOSED.log").substringBeforeLast(".log"),
+                s3ObjectSummary.lastModified.time,
                 gmtFormat.parse(key.substringBefore("Z_").substringAfterLast("/")).time,
                 key.endsWith("CLOSED.log"),
             false,
