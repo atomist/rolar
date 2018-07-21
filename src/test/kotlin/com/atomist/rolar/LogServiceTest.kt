@@ -27,7 +27,7 @@ class LogServiceTest : StringSpec({
         listOf(
                 LogLine(
                         "info",
-                        "log message ${lk.host}",
+                        "log message ${lk.toS3Key()}",
                         lk.host
                 )
         )
@@ -39,11 +39,11 @@ class LogServiceTest : StringSpec({
 
     "read a single log message" {
         val lkm = LogKeyMaker()
-        whenever(s3LogReader.readLogKeys(any())).doReturn(
-                lkm.nextLogKeyBatch(1)
+        whenever(s3LogReader.readLogKeys(any(), isNull())).doReturn(
+                lkm.nextLogKeyBatch(1, 1)
         )
 
-        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 0)
+        val logResults = logService.logResultEvents(listOf("a", "b", "c"))
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1,  1))
                 .verifyComplete()
@@ -51,12 +51,14 @@ class LogServiceTest : StringSpec({
 
     "read many log message across batches" {
         val lkm = LogKeyMaker()
-        whenever(s3LogReader.readLogKeys(any())).doReturn(
-                lkm.nextLogKeyBatch(2, false),
-                lkm.nextLogKeyBatch(1, true)
+        whenever(s3LogReader.readLogKeys(any(), isNull())).doReturn(
+                lkm.nextLogKeyBatch(1, 2, false)
+        )
+        whenever(s3LogReader.readLogKeys(any(), any())).doReturn(
+                lkm.nextLogKeyBatch(2, 1, true)
         )
 
-        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 0)
+        val logResults = logService.logResultEvents(listOf("a", "b", "c"))
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 1, false))
                 .expectNext(constructLogResults(1, 2, false))
@@ -66,11 +68,11 @@ class LogServiceTest : StringSpec({
 
     "prioritize recent logs, ensure close is only on last one received" {
         val lkm = LogKeyMaker()
-        whenever(s3LogReader.readLogKeys(any())).doReturn(
-                lkm.nextLogKeyBatch(7, true)
+        whenever(s3LogReader.readLogKeys(any(), isNull())).doReturn(
+                lkm.nextLogKeyBatch(1, 7, true)
         )
 
-        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 0, 2)
+        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 2)
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 6, false))
                 .expectNext(constructLogResults(1, 7, false))
@@ -84,12 +86,14 @@ class LogServiceTest : StringSpec({
 
     "prioritize recent logs and accept next set of logs" {
         val lkm = LogKeyMaker()
-        whenever(s3LogReader.readLogKeys(any())).doReturn(
-                lkm.nextLogKeyBatch(7, false),
-                lkm.nextLogKeyBatch(2, true)
+        whenever(s3LogReader.readLogKeys(any(), isNull())).doReturn(
+                lkm.nextLogKeyBatch(1, 7, false)
+        )
+        whenever(s3LogReader.readLogKeys(any(), any())).doReturn(
+                lkm.nextLogKeyBatch(2, 2, true)
         )
 
-        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 0, 2)
+        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 2)
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 6, false))
                 .expectNext(constructLogResults(1, 7, false))
@@ -106,12 +110,10 @@ class LogServiceTest : StringSpec({
 })
 
 class LogKeyMaker {
-    var nextKeyBatch = 0
 
-    fun nextLogKeyBatch(count: Int, close: Boolean = true): List<LogKey> {
-        nextKeyBatch++
+    fun nextLogKeyBatch(batch: Int, count: Int, close: Boolean = true): List<LogKey> {
         return (1..count).map { i ->
-            constructLogKey(nextKeyBatch, i, close && i == count)
+            constructLogKey(batch, i, close && i == count)
         }
     }
 
@@ -122,7 +124,8 @@ class LogKeyMaker {
             1531742400000 + (batch * 1000) + index,
             1531742400000 + (batch * 1000) + index,
             closed,
-            prepend
+            prepend,
+            "$batch.$index"
         )
     }
 }

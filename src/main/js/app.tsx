@@ -4,6 +4,9 @@ import * as _ from 'lodash';
 
 type AppState = {
     logs: Array<LogRow>;
+    history: Array<LogRow>;
+    showHistory: Boolean;
+    enableShowHistoryButton: Boolean;
 }
 
 class App extends React.Component<any, AppState> {
@@ -11,7 +14,10 @@ class App extends React.Component<any, AppState> {
     constructor(props: any) {
         super(props);
         this.state = {
-            logs: new Array<LogRow>()
+            logs: new Array<LogRow>(),
+            history: new Array<LogRow>(),
+            showHistory: false,
+            enableShowHistoryButton: false
         };
     }
 
@@ -20,7 +26,7 @@ class App extends React.Component<any, AppState> {
         if (this.props.auth) {
             auth = `&auth=${this.props.auth}`
         }
-        const url = '/api/reactive/logs/' + this.props.path + '?after=' + this.props.after + auth;
+        const url = '/api/reactive/logs/' + this.props.path + '?after=' + this.props.after + '&prioritize=10' + '&historyLimit=50' + auth;
         const source = new EventSource(url);
         source.addEventListener("message", (logResultsEvent: MessageEvent) => {
             const logResults = JSON.parse(logResultsEvent.data);
@@ -28,18 +34,34 @@ class App extends React.Component<any, AppState> {
                 const specifiedPath = this.props.path.split("/");
                 if(_.isEqual(specifiedPath, logResults.lastKey.path)) {
                     source.close();
+                    this.setState({ enableShowHistoryButton: true });
                 }
             }
-            this.state.logs.push(...logResults.logs);
-            this.setState({
-                logs: this.state.logs
-            });
+            if (logResults.lastKey.prepend) {
+                var updatedHistory = this.state.history.concat();
+                updatedHistory.splice(0, 0, ...logResults.logs);
+                this.setState({
+                    history: updatedHistory
+                });
+            } else {
+                this.setState({
+                    logs: this.state.logs.concat(logResults.logs)
+                });
+            }
         });
+    }
+
+    showHistory() {
+        this.setState({ showHistory: true });
     }
 
     render() {
         return (
-            <LogList logs={this.state.logs}/>
+            <div>
+                <input className={this.state.enableShowHistoryButton ? '' : 'hidden'} type="submit" value="See  History" onClick={this.showHistory.bind(this)} />
+                { this.state.showHistory ? <LogList logs={this.state.history}/> : null }
+                <LogList logs={this.state.logs}/>
+            </div>
         )
     }
 }

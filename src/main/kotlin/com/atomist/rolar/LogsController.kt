@@ -13,20 +13,20 @@ class LogsController @Autowired
 constructor(private var logsService: LogsService) {
 
     @RequestMapping("api/logs/**")
-    fun getLog(@RequestParam after: Long?,
-               @RequestParam prioritize: Int? = 0,
+    fun getLog(@RequestParam prioritize: Int? = 0,
+               @RequestParam historyLimit: Int? = 0,
                request: HttpServletRequest): List<LogResults> {
         val path = constructPathFromUriWildcardSuffix(request)
-        return logsService.logResultEvents(path, after ?: 0, prioritize ?: 0)
+        return logsService.logResultEvents(path, prioritize ?: 0, historyLimit ?: 0)
                 .collectList().block()!!.toList()
     }
 
     @GetMapping(value = "api/reactive/logs/**", produces = arrayOf(MediaType.TEXT_EVENT_STREAM_VALUE))
-    fun getLogs(@RequestParam after: Long? = 0,
-                @RequestParam prioritize: Int? = 0,
+    fun getLogs(@RequestParam prioritize: Int? = 0,
+                @RequestParam historyLimit: Int? = 0,
                 request: HttpServletRequest): Flux<LogResults> {
         val path = constructPathFromUriWildcardSuffix(request)
-        return logsService.logResultEvents(path, after ?: 0, prioritize ?: 0)
+        return logsService.logResultEvents(path, prioritize ?: 0, historyLimit ?: 0)
     }
 
     @RequestMapping(value = "api/logs/**", method = arrayOf(RequestMethod.POST))

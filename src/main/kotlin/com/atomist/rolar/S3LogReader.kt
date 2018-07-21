@@ -16,10 +16,11 @@ constructor(private val s3Client: AmazonS3Client,
     private val mapper = jacksonObjectMapper()
     private val bucketName = s3LoggingServiceProperties.s3_logging_bucket
 
-    fun readLogKeys(path: List<String>): List<LogKey> {
+    fun readLogKeys(path: List<String>, lastS3Key: String? = null): List<LogKey> {
         val request = ListObjectsRequest()
                 .withBucketName(bucketName)
                 .withPrefix("${path.joinToString("/")}/")
+                .withMarker(lastS3Key)
         var objectListing = s3Client.listObjects(request)
         val allObjectSummaries = objectListing.getObjectSummaries()
         while (objectListing.nextMarker != null) {

@@ -19,3 +19,5 @@ td {
 pre {
     margin: 0px;
 }
+
+.hidden { display:none; }
