@@ -5,6 +5,7 @@ import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.HandlerMapping
 import reactor.core.publisher.Flux
+import java.util.*
 import javax.servlet.http.HttpServletRequest
 
 @CrossOrigin
@@ -19,6 +20,18 @@ constructor(private var logsService: LogsService) {
         val path = constructPathFromUriWildcardSuffix(request)
         return logsService.logResultEvents(path, prioritize ?: 0, historyLimit ?: 0)
                 .collectList().block()!!.toList()
+    }
+
+    @RequestMapping(path = ["api/logs/**"], method = [RequestMethod.HEAD])
+    fun getLog(): Long {
+        return logsService.writeLogs(listOf("service_testing"), IncomingLog(
+               "unknown",
+                listOf(LogLine(
+                        "info",
+                        "testing that service is up",
+                        Date().time.toString()
+                ))
+        ))
     }
 
     @GetMapping(value = "api/reactive/logs/**", produces = arrayOf(MediaType.TEXT_EVENT_STREAM_VALUE))
