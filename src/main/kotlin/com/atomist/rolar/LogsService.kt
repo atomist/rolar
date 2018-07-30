@@ -29,6 +29,7 @@ constructor(private val s3LogReader: S3LogReader,
         ) { lastS3Key, sink ->
             val logKeys = s3LogReader.readLogKeys(path, lastS3Key)
             if (logKeys.isEmpty()) {
+                sink.next(LogKeysAfter(listOf(), lastS3Key))
                 lastS3Key
             } else {
                 val sortedLogKeys = logKeys.sortedBy { it.lastModified }
