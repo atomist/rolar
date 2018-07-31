@@ -4,9 +4,7 @@ import * as _ from 'lodash';
 
 type AppState = {
     logs: Array<LogRow>;
-    history: Array<LogRow>;
-    historyDump: Array<Array<LogRow>>;
-    showMoreHistoryEnabled: Boolean;
+    historyBuffer: Array<LogRow>;
 }
 
 class App extends React.Component<any, AppState> {
@@ -15,9 +13,7 @@ class App extends React.Component<any, AppState> {
         super(props);
         this.state = {
             logs: new Array<LogRow>(),
-            history: new Array<LogRow>(),
-            historyDump: new Array<Array<LogRow>>(),
-            showMoreHistoryEnabled: false
+            historyBuffer: new Array<LogRow>()
         };
     }
 
@@ -26,7 +22,7 @@ class App extends React.Component<any, AppState> {
         if (this.props.auth) {
             auth = `&auth=${this.props.auth}`
         }
-        const url = '/api/reactive/logs/' + this.props.path + '?after=' + this.props.after + '&prioritize=10' + '&historyLimit=100' + auth;
+        const url = '/api/reactive/logs/' + this.props.path + '?prioritize=10' + auth;
         const source = new EventSource(url);
         source.addEventListener("message", (logResultsEvent: MessageEvent) => {
             const logResults = JSON.parse(logResultsEvent.data);
@@ -34,38 +30,34 @@ class App extends React.Component<any, AppState> {
                 const specifiedPath = this.props.path.split("/");
                 if(_.isEqual(specifiedPath, logResults.lastKey.path)) {
                     source.close();
-                    this.setState({
-                        showMoreHistoryEnabled: true
-                    });
                 }
             }
             if (logResults.lastKey.prepend) {
-                this.state.history.splice(0, 0, ...logResults.logs);
+                this.state.historyBuffer.splice(0, 0, ...logResults.logs);
                 this.setState({
-                    history: this.state.history
+                    historyBuffer: this.state.historyBuffer
                 });
             } else {
+                this.state.logs.push(...logResults.logs);
                 this.setState({
-                    logs: this.state.logs.concat(logResults.logs)
+                    logs: this.state.logs
                 });
             }
         });
     }
 
     showHistory() {
-        this.state.historyDump.push(this.state.history.concat());
+        this.state.logs.splice(0, 0, ...this.state.historyBuffer);
         this.setState({
-            historyDump: this.state.historyDump,
-            history: [],
-            showMoreHistoryEnabled: false
+            historyBuffer: [],
+            logs: this.state.logs
         });
     }
 
     render() {
         return (
             <div>
-                <input className={this.state.showMoreHistoryEnabled ? '' : 'hidden'} type="submit" value="Show More History" onClick={this.showHistory.bind(this)} />
-                { this.state.historyDump.concat().reverse().map(h => <LogList logs={h}/>) }
+                <input className={this.state.historyBuffer.length > 0 ? '' : 'hidden'} type="submit" value="Show More History" onClick={this.showHistory.bind(this)} />
                 <LogList logs={this.state.logs}/>
             </div>
         )
