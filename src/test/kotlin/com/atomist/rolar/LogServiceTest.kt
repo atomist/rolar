@@ -14,7 +14,8 @@ class LogServiceTest : StringSpec({
                         LogLine(
                                 "info",
                                 "log message $batch.$index",
-                                "$batch.$index"
+                                "$batch.$index",
+                                null
                         )
                 )
         )
@@ -28,7 +29,8 @@ class LogServiceTest : StringSpec({
                 LogLine(
                         "info",
                         "log message ${lk.toS3Key()}",
-                        lk.host
+                        lk.host,
+                        null
                 )
         )
     }.whenever(s3LogReader).readLogContent(any())
@@ -36,6 +38,56 @@ class LogServiceTest : StringSpec({
     val s3LogWriter: S3LogWriter = mock()
 
     val logService = LogsService(s3LogReader, s3LogWriter, Duration.ZERO)
+
+    "write a log message with string formatted timestamp" {
+        val logContent = listOf(
+                LogLine(
+                        "info",
+                        "log message",
+                        "07/31/2018 14:05:23.136",
+                        null
+                )
+        )
+        logService.writeLogs(listOf("a", "b", "c"),
+                IncomingLog(
+                        "mbp",
+                        logContent
+                ))
+        verify(s3LogWriter).write(LogKey(
+                listOf("a", "b", "c"),
+                "mbp",
+                1533045923136,
+                0,
+                false
+            ),
+            logContent
+        )
+    }
+
+    "write a log message with millis timestamp" {
+        val logContent = listOf(
+                LogLine(
+                        "info",
+                        "log message",
+                        "07/31/2018 14:05:23.136",
+                        1533045923137
+                )
+        )
+        logService.writeLogs(listOf("a", "b", "c"),
+                IncomingLog(
+                        "mbp",
+                        logContent
+                ))
+        verify(s3LogWriter).write(LogKey(
+                listOf("a", "b", "c"),
+                "mbp",
+                1533045923137,
+                0,
+                false
+        ),
+                logContent
+        )
+    }
 
     "read a single log message" {
         val lkm = LogKeyMaker()

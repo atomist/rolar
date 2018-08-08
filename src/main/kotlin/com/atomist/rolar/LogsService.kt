@@ -15,10 +15,18 @@ constructor(private val s3LogReader: S3LogReader,
             private val delay: Duration = Duration.ofSeconds(2)) {
 
     fun writeLogs(path: List<String>, incomingLog: IncomingLog, isClosed: Boolean = false): Long {
-        val creationTime = Date().time
-        val key = LogKey(path, incomingLog.host, creationTime, 0, isClosed)
+        if (incomingLog.content.isEmpty()) { return -1 }
+        val firstLog = incomingLog.content.first()
+        val firstTimsestamp: Long = if (firstLog.timestampMillis != null) {
+            firstLog.timestampMillis
+        } else {
+            val utcDateParser = SimpleDateFormat("MM/dd/yyyy HH:mm:ss.SSS")
+            utcDateParser.timeZone = TimeZone.getTimeZone("GMT")
+            utcDateParser.parse(firstLog.timestamp).time
+        }
+        val key = LogKey(path, incomingLog.host, firstTimsestamp, 0, isClosed)
         s3LogWriter.write(key, incomingLog.content)
-        return creationTime
+        return firstTimsestamp
     }
 
     fun logResultEvents(path: List<String>,
@@ -32,8 +40,7 @@ constructor(private val s3LogReader: S3LogReader,
                 sink.next(LogKeysAfter(listOf(), lastS3Key))
                 lastS3Key
             } else {
-                val sortedLogKeys = logKeys.sortedBy { it.lastModified }
-                val truncatedKeys  = if (historyLimit == 0) sortedLogKeys else sortedLogKeys.takeLast(historyLimit)
+                val truncatedKeys  = if (historyLimit == 0) logKeys else logKeys.takeLast(historyLimit)
                 sink.next(LogKeysAfter(truncatedKeys, lastS3Key))
                 val lastKey = logKeys.last()
                 if (lastKey.isClosed && lastKey.path == path) {
@@ -48,7 +55,7 @@ constructor(private val s3LogReader: S3LogReader,
                         prioritizeRecent != 0 && (historyLimit == 0 || prioritizeRecent < historyLimit)) {
                     val isLogClosed = lka.keys.last().isClosed
                     val recentLogs = lka.keys.takeLast(prioritizeRecent)
-                    val reversedHistory = lka.keys.take(lka.keys.size - prioritizeRecent)
+                    val reversedHistory = lka.keys.take(Math.max(0, lka.keys.size - prioritizeRecent))
                             .reversed()
                             .map { it.copy(prepend = true)}
                     val orderedLogKeys = recentLogs + reversedHistory
@@ -131,4 +138,5 @@ data class LogKeysAfter (
 data class LogLine(
         val level: String,
         val message: String,
-        val timestamp: String)
+        val timestamp: String?,
+        val timestampMillis: Long?)

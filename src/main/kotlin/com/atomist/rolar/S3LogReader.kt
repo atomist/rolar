@@ -7,6 +7,8 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Service
 class S3LogReader @Autowired
@@ -35,7 +37,18 @@ constructor(private val s3Client: AmazonS3Client,
     fun readLogContent(logKey: LogKey): List<LogLine> {
         val s3Object = s3Client.getObject(GetObjectRequest(bucketName, logKey.toS3Key()))
         val logContent = s3Object.objectContent.bufferedReader().use { it.readText() }
-        return mapper.readValue(logContent)
+        val logs: List<LogLine> = mapper.readValue(logContent)
+        val preferMillisTimestampLogs = logs.map {
+            val ts = if (it.timestampMillis != null) {
+                val utcDateFormat = SimpleDateFormat("MM/dd/yyyy HH:mm:ss.SSS")
+                utcDateFormat.timeZone = TimeZone.getTimeZone("GMT")
+                utcDateFormat.format(it.timestampMillis)
+            } else {
+                it.timestamp
+            }
+            it.copy(timestamp = ts)
+        }
+        return preferMillisTimestampLogs
     }
 
 }

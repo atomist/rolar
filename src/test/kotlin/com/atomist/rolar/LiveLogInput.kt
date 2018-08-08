@@ -13,13 +13,15 @@ fun main(args : Array<String>) {
     val count = 1000
     val gmtFormat = LogKey.constructGmtFormat()
     for (i in 0 .. count) {
+        val now = Date()
         val log = IncomingLog(
                 host = hostName,
                 content = listOf(
                         LogLine(
                                 level = "info",
                                 message = "test $i",
-                                timestamp = gmtFormat.format(Date())
+                                timestamp = null,
+                                timestampMillis = now.time
                         )
                 )
         )

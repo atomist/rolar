@@ -29,7 +29,8 @@ constructor(private var logsService: LogsService) {
                 listOf(LogLine(
                         "info",
                         "testing that service is up",
-                        Date().time.toString()
+                        Date().time.toString(),
+                        Date().time
                 ))
         ))
     }
