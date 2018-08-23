@@ -53,7 +53,7 @@ constructor(private val s3LogReader: S3LogReader,
             .flatMapSequential { lka ->
                 val logKeys = if (lka.lastS3Key == null &&
                         prioritizeRecent != 0 && (historyLimit == 0 || prioritizeRecent < historyLimit)) {
-                    val isLogClosed = lka.keys.last().isClosed
+                    val isLogClosed = lka.keys.isNotEmpty() &&  lka.keys.last().isClosed
                     val recentLogs = lka.keys.takeLast(prioritizeRecent)
                     val reversedHistory = lka.keys.take(Math.max(0, lka.keys.size - prioritizeRecent))
                             .reversed()
