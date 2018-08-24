@@ -1,0 +1,60 @@
+{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "AWS_ACCESS_KEY_ID",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "aws-s3-logger",
+                    "key": "awsSecret"
+                  }
+                }
+              },
+              {
+                "name": "AWS_SECRET_ACCESS_KEY",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "aws-s3-logger",
+                    "key": "awsKey"
+                  }
+                }
+              },
+              {
+                "name": "S3_LOGGING_BUCKET",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "aws-s3-logger",
+                    "key": "s3Bucket"
+                  }
+                }
+              },
+              {
+                "name": "AUTH_SERVER_BASE_URL",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "aws-s3-logger",
+                    "key": "authUrl"
+                  }
+                }
+              }
+            ],
+            "resources": {
+              "limits": {
+                "cpu": "2000m",
+                "memory": "4000Mi"
+              },
+              "requests": {
+                "cpu": "1000m",
+                "memory": "2000Mi"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
