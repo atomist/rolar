@@ -14,7 +14,7 @@ import org.springframework.web.server.WebFilterChain
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-//@Component
+@Component
 class JwtGateFilter(val s3LoggingServiceProperties: S3LoggingServiceProperties) : WebFilter {
 
     @Override
