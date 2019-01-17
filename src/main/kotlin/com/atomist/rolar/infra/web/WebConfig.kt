@@ -1,4 +1,4 @@
-package com.atomist.rolar
+package com.atomist.rolar.infra.web
 
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.reactive.config.CorsRegistry
