@@ -1,9 +1,10 @@
 package com.atomist.rolar.app
 
 import com.atomist.rolar.domain.model.IncomingLog
+import reactor.core.publisher.Mono
 
 interface WriteLog {
-    fun writeLog(request: WriteLogRequest)
+    fun writeLog(request: WriteLogRequest) : Mono<Long>
 }
 
 data class WriteLogRequest(

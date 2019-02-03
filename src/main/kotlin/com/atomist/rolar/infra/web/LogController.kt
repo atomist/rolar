@@ -12,6 +12,7 @@ import org.springframework.util.AntPathMatcher
 import org.springframework.web.reactive.HandlerMapping
 import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.util.pattern.PathPattern
+import reactor.core.publisher.Mono
 import java.util.*
 
 
@@ -35,12 +36,12 @@ class LogController(private var getLogs: GetLogs, private var streamLogs: Stream
     @PostMapping(value = ["api/logs/**"])
     fun writeLog(@RequestParam(required = false, defaultValue = "false") closed: Boolean,
                  @RequestBody incomingLog: IncomingLog,
-                 request: ServerWebExchange) {
-        writeLog.writeLog(WriteLogRequest(getWildcardPath(request), closed, incomingLog))
+                 request: ServerWebExchange) : Mono<Long> {
+        return writeLog.writeLog(WriteLogRequest(getWildcardPath(request), closed, incomingLog))
     }
 
     @RequestMapping(path = ["api/logs/**"], method = [RequestMethod.HEAD])
-    fun getLog(): Long {
+    fun getLog(): Mono<Long> {
         writeLog.writeLog(WriteLogRequest(path = listOf("service_testing"), incomingLog = IncomingLog(
                 "unknown",
                 listOf(LogLine(
@@ -50,7 +51,7 @@ class LogController(private var getLogs: GetLogs, private var streamLogs: Stream
                         Date().time
                 ))
         ), closed = false))
-        return 1
+        return Mono.just(1)
     }
 
     fun getWildcardPath(exchange: ServerWebExchange): List<String> {
