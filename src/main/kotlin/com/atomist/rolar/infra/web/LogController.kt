@@ -2,6 +2,7 @@ package com.atomist.rolar.infra.web
 
 import com.atomist.rolar.app.*
 import com.atomist.rolar.domain.model.IncomingLog
+import com.atomist.rolar.domain.model.LogKey
 import com.atomist.rolar.domain.model.LogLine
 import com.atomist.rolar.domain.model.LogResults
 import org.springframework.context.annotation.Lazy
@@ -19,11 +20,16 @@ import java.util.*
 @CrossOrigin
 @RestController @Lazy
 class LogController(private var getLogs: GetLogs, private var streamLogs: StreamLogs, private var writeLog: WriteLog) {
-    @GetMapping("api/logs/**")
+    @RequestMapping(path = ["api/logs/**"], method = [RequestMethod.GET])
     fun getLogs(@RequestParam(required = false, defaultValue = "0") prioritize: Int,
                @RequestParam(required = false, defaultValue = "0") historyLimit: Int,
                request: ServerWebExchange): Flux<LogResults> {
-        return getLogs.getLogs(GetLogsRequest(getWildcardPath(request), prioritize, historyLimit))
+        val path = getWildcardPath(request)
+        if(path.isEmpty() || path.joinToString("") == "") {
+            return Flux.just(LogResults(LogKey(path, "unknown", Date().time, Date().time, false), listOf()))
+        } else {
+            return getLogs.getLogs(GetLogsRequest(getWildcardPath(request), prioritize, historyLimit))
+        }
     }
 
     @GetMapping(value = ["api/reactive/logs/**"], produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
@@ -38,20 +44,6 @@ class LogController(private var getLogs: GetLogs, private var streamLogs: Stream
                  @RequestBody incomingLog: IncomingLog,
                  request: ServerWebExchange) : Mono<Long> {
         return writeLog.writeLog(WriteLogRequest(getWildcardPath(request), closed, incomingLog))
-    }
-
-    @RequestMapping(path = ["api/logs/**"], method = [RequestMethod.HEAD])
-    fun getLog(): Mono<Long> {
-        writeLog.writeLog(WriteLogRequest(path = listOf("service_testing"), incomingLog = IncomingLog(
-                "unknown",
-                listOf(LogLine(
-                        "info",
-                        "testing that service is up",
-                        Date().time.toString(),
-                        Date().time
-                ))
-        ), closed = false))
-        return Mono.just(1)
     }
 
     fun getWildcardPath(exchange: ServerWebExchange): List<String> {

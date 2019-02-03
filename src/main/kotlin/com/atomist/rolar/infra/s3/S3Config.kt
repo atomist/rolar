@@ -9,13 +9,16 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Lazy
 
 @Configuration
-class S3Config(val s3LoggingServiceProperties: S3LoggingServiceProperties) {
+class S3Config(val props: S3LoggingServiceProperties) {
 
     @Bean @Lazy
     fun s3Client(): AmazonS3 {
-        val creds = BasicAWSCredentials(s3LoggingServiceProperties.aws_access_key_id,
-                s3LoggingServiceProperties.aws_secret_access_key)
-        return AmazonS3ClientBuilder.standard().withCredentials(AWSStaticCredentialsProvider(creds))
-                .withRegion(s3LoggingServiceProperties.region).build()
+        val creds = BasicAWSCredentials(props.aws_access_key_id,
+                props.aws_secret_access_key)
+        return AmazonS3ClientBuilder
+                .standard()
+                .withCredentials(AWSStaticCredentialsProvider(creds))
+                .withRegion(props.region)
+                .build()
     }
 }
