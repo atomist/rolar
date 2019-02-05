@@ -60,7 +60,7 @@ class LogServiceTest : StringSpec({
                 Mono.just(IncomingLog(
                         "mbp",
                         logContent
-                )))
+                ))).subscribe()
         verify(s3LogWriter).write(LogKey(
                 listOf("a", "b", "c"),
                 "mbp",
@@ -85,7 +85,7 @@ class LogServiceTest : StringSpec({
                 Mono.just(IncomingLog(
                         "mbp",
                         logContent
-                )))
+                ))).subscribe()
         verify(s3LogWriter).write(LogKey(
                 listOf("a", "b", "c"),
                 "mbp",
