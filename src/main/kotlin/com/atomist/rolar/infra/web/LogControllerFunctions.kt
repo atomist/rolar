@@ -56,7 +56,7 @@ class LogControllerFunctions(private var getLogs: GetLogs, private var streamLog
         val incomingLog = request.bodyToMono(IncomingLog::class.java)
         val writeResult = writeLog.writeLog(WriteLogRequest(getWildcardPath(request), closed!!.toBoolean(), incomingLog))
         return ServerResponse.ok()
-                .contentType(MediaType.TEXT_PLAIN)
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(writeResult, Long::class.java)
     }
 

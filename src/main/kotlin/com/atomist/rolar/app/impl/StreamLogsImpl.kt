@@ -10,6 +10,6 @@ import org.springframework.stereotype.Service
 @Service @Lazy
 class StreamLogsImpl(private val logService: LogService): StreamLogs {
     override fun getLogs(request: StreamLogsRequest): StreamLogsResponse {
-        return logService.logResultEvents(request.path, request.prioritize, request.historyLimit)
+        return logService.streamResultEvents(request.path, request.prioritize, request.historyLimit)
     }
 }

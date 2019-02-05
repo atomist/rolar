@@ -11,6 +11,9 @@ interface LogService {
     fun logResultEvents(path: List<String>,
                         prioritizeRecent: Int = 0,
                         historyLimit: Int = 0): Flux<LogResults>
+    fun streamResultEvents(path: List<String>,
+                        prioritizeRecent: Int = 0,
+                        historyLimit: Int = 0): Flux<LogResults>
 }
 
 data class LogKeysAfter (

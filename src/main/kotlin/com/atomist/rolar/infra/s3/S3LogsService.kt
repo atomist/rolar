@@ -5,12 +5,16 @@ import com.atomist.rolar.domain.LogService
 import com.atomist.rolar.domain.model.IncomingLog
 import com.atomist.rolar.domain.model.LogKey
 import com.atomist.rolar.domain.model.LogResults
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.text.SimpleDateFormat
 import java.time.Duration
 import java.util.*
+import java.util.function.Consumer
+import kotlin.concurrent.timerTask
 
 @Service
 class S3LogService
@@ -18,6 +22,7 @@ constructor(private val s3LogReader: S3LogReader,
             private val s3LogWriter: S3LogWriter) : LogService {
 
     private final val delay: Duration = Duration.ofSeconds(2)
+    private final val logger: Logger = LoggerFactory.getLogger("s3logservice")
 
     override fun writeLogs(path: List<String>, incomingLog: Mono<IncomingLog>, isClosed: Boolean): Mono<Long> {
         return incomingLog.map {
@@ -41,16 +46,17 @@ constructor(private val s3LogReader: S3LogReader,
 
     }
 
-    override fun logResultEvents(path: List<String>,
-                        prioritizeRecent: Int,
-                        historyLimit: Int): Flux<LogResults> {
+    override fun streamResultEvents(path: List<String>,
+                                 prioritizeRecent: Int,
+                                 historyLimit: Int): Flux<LogResults> {
         val logFileRefGroupEvents = Flux.generate<LogKeysAfter, String>(
                 { null }
         ) { lastS3Key, sink ->
+            logger.info("Reading keys for ${path.joinToString("/")}")
             val logKeys = s3LogReader.readLogKeys(path, lastS3Key)
             if (logKeys.isEmpty()) {
                 sink.next(LogKeysAfter(listOf(), lastS3Key))
-                lastS3Key
+                return@generate lastS3Key
             } else {
                 val truncatedKeys  = if (historyLimit == 0) logKeys else logKeys.takeLast(historyLimit)
                 sink.next(LogKeysAfter(truncatedKeys, lastS3Key))
@@ -58,33 +64,45 @@ constructor(private val s3LogReader: S3LogReader,
                 if (lastKey.isClosed && lastKey.path == path) {
                     sink.complete()
                 }
-                lastKey.toS3Key()
+                return@generate lastKey.toS3Key()
             }
         }
         return logFileRefGroupEvents.delayElements(delay)
-            .flatMapSequential { lka ->
-                val logKeys = if (lka.lastKey == null &&
-                        prioritizeRecent != 0 && (historyLimit == 0 || prioritizeRecent < historyLimit)) {
-                    val isLogClosed = lka.keys.isNotEmpty() &&  lka.keys.last().isClosed
-                    val recentLogs = lka.keys.takeLast(prioritizeRecent)
-                    val reversedHistory = lka.keys.take(Math.max(0, lka.keys.size - prioritizeRecent))
-                            .reversed()
-                            .map { it.copy(prepend = true)}
-                    val orderedLogKeys = recentLogs + reversedHistory
-                    if (isLogClosed) {
-                        orderedLogKeys.mapIndexed { i, lk -> lk.copy(isClosed = i + 1 >= orderedLogKeys.size) }
+                .flatMapSequential {
+                    val logKeys = if (it.lastKey == null &&
+                            prioritizeRecent != 0 && (historyLimit == 0 || prioritizeRecent < historyLimit)) {
+                        val isLogClosed = it.keys.isNotEmpty() &&  it.keys.last().isClosed
+                        val recentLogs = it.keys.takeLast(prioritizeRecent)
+                        val reversedHistory = it.keys.take(Math.max(0, it.keys.size - prioritizeRecent))
+                                .reversed()
+                                .map { it.copy(prepend = true)}
+                        val orderedLogKeys = recentLogs + reversedHistory
+                        if (isLogClosed) {
+                            orderedLogKeys.mapIndexed { i, lk -> lk.copy(isClosed = i + 1 >= orderedLogKeys.size) }
+                        } else {
+                            orderedLogKeys
+                        }
                     } else {
-                        orderedLogKeys
+                        it.keys
                     }
-                } else {
-                    lka.keys
+                    Flux.fromIterable(logKeys)
                 }
-                Flux.fromIterable(logKeys)
-            }
-            .map { logKey ->
-                val logLines = s3LogReader.readLogContent(logKey)
-                LogResults(logKey, logLines)
-            }
+                .map { logKey ->
+                    val logLines = s3LogReader.readLogContent(logKey)
+                    LogResults(logKey, logLines)
+                }
+    }
+
+    override fun logResultEvents(path: List<String>,
+                        prioritizeRecent: Int,
+                        historyLimit: Int): Flux<LogResults> {
+        val logKeys = s3LogReader.readLogKeys(path, null)
+        val truncatedKeys  = if (historyLimit == 0) logKeys else logKeys.takeLast(historyLimit)
+        return Flux.fromIterable(truncatedKeys)
+                .map { logKey ->
+                    val logLines = s3LogReader.readLogContent(logKey)
+                    LogResults(logKey, logLines)
+                }
     }
 
 }

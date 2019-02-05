@@ -17,7 +17,7 @@ class WebfluxConfiguration: WebFluxConfigurer {
     fun logRouter(logFunctions: LogControllerFunctions) = router {
         GET("/api/logs/{*path}").invoke(logFunctions::getLogs)
         GET("/api/reactive/logs/{*path}").invoke(logFunctions::streamLogs)
-        POST("/api/logs/{*path}").invoke(logFunctions::writeLog)
+        POST("/api/logs/{*path}").and(contentType(MediaType.APPLICATION_JSON)).invoke(logFunctions::writeLog)
         HEAD("/api/logs/{*path}").invoke(logFunctions::check)
     }
 
