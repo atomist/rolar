@@ -10,6 +10,7 @@ import com.atomist.rolar.infra.s3.S3LogWriter
 import com.atomist.rolar.infra.s3.toS3Key
 import com.nhaarman.mockito_kotlin.*
 import io.kotlintest.specs.StringSpec
+import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
 class LogServiceTest : StringSpec({
@@ -56,10 +57,10 @@ class LogServiceTest : StringSpec({
                 )
         )
         logService.writeLogs(listOf("a", "b", "c"),
-                IncomingLog(
+                Mono.just(IncomingLog(
                         "mbp",
                         logContent
-                ))
+                )))
         verify(s3LogWriter).write(LogKey(
                 listOf("a", "b", "c"),
                 "mbp",
@@ -81,10 +82,10 @@ class LogServiceTest : StringSpec({
                 )
         )
         logService.writeLogs(listOf("a", "b", "c"),
-                IncomingLog(
+                Mono.just(IncomingLog(
                         "mbp",
                         logContent
-                ))
+                )))
         verify(s3LogWriter).write(LogKey(
                 listOf("a", "b", "c"),
                 "mbp",

@@ -10,5 +10,5 @@ interface WriteLog {
 data class WriteLogRequest(
         val path: List<String>,
         val closed: Boolean,
-        val incomingLog: IncomingLog
+        val incomingLog: Mono<IncomingLog>
 )

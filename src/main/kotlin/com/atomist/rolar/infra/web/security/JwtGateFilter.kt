@@ -14,14 +14,14 @@ import org.springframework.web.server.WebFilterChain
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-@Component
+//@Component
 class JwtGateFilter(val s3LoggingServiceProperties: S3LoggingServiceProperties) : WebFilter {
 
     @Override
-    override fun filter(serverWebExchange: ServerWebExchange,
+    override fun filter(exchange: ServerWebExchange,
                         chain: WebFilterChain) : Mono<Void> {
-        val authHeader = serverWebExchange.request.headers.getFirst("Authorization") ?: "Bearer ${serverWebExchange.request.queryParams.getFirst("auth")}"
-        if (serverWebExchange.request.method == HttpMethod.GET) {
+        val authHeader = exchange.request.headers.getFirst("Authorization") ?: "Bearer ${exchange.request.queryParams.getFirst("auth")}"
+        if (exchange.request.method == HttpMethod.GET && exchange.request.path.pathWithinApplication().value().startsWith("/api")) {
             val headers = HttpHeaders()
             headers.set("Authorization", authHeader)
             headers.set("Content-Type", "application/json")
@@ -48,15 +48,15 @@ class JwtGateFilter(val s3LoggingServiceProperties: S3LoggingServiceProperties) 
             val persons = authResponse.body?.data?.personByIdentity ?: listOf()
             val validRoots = persons.map { p -> p.team?.id }.filterNotNull()
 
-            val root = serverWebExchange.request.path.pathWithinApplication().value().substringAfter("/logs/").substringBefore("/")
+            val root = exchange.request.path.pathWithinApplication().value().substringAfter("/logs/").substringBefore("/")
             return if (validRoots.contains(root)) {
-                chain.filter(serverWebExchange)
+                chain.filter(exchange)
             } else {
-                serverWebExchange.response.statusCode = HttpStatus.UNAUTHORIZED
-                serverWebExchange.response.writeWith { Flux.just("Invalid token for root '$root'") }
+                exchange.response.statusCode = HttpStatus.UNAUTHORIZED
+                exchange.response.writeWith { Flux.just("Invalid token for root '$root'") }
             }
         } else {
-            return chain.filter(serverWebExchange)
+            return chain.filter(exchange)
         }
     }
 

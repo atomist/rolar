@@ -7,6 +7,7 @@ import com.atomist.rolar.domain.model.LogKey
 import com.atomist.rolar.domain.model.LogResults
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import java.text.SimpleDateFormat
 import java.time.Duration
 import java.util.*
@@ -18,19 +19,26 @@ constructor(private val s3LogReader: S3LogReader,
 
     private final val delay: Duration = Duration.ofSeconds(2)
 
-    override fun writeLogs(path: List<String>, incomingLog: IncomingLog, isClosed: Boolean): Long {
-        if (incomingLog.content.isEmpty()) { return -1 }
-        val firstLog = incomingLog.content.first()
-        val firstTimestamp: Long = if (firstLog.timestampMillis != null) {
-            firstLog.timestampMillis
-        } else {
-            val utcDateParser = SimpleDateFormat("MM/dd/yyyy HH:mm:ss.SSS")
-            utcDateParser.timeZone = TimeZone.getTimeZone("GMT")
-            utcDateParser.parse(firstLog.timestamp).time
+    override fun writeLogs(path: List<String>, incomingLog: Mono<IncomingLog>, isClosed: Boolean): Mono<Long> {
+        return incomingLog.map {
+            if (it.content.isEmpty()) {
+                return@map ((-1).toLong())
+            }
+            else {
+                val firstLog = it.content.first()
+                val firstTimestamp: Long = if (firstLog.timestampMillis != null) {
+                    firstLog.timestampMillis
+                } else {
+                    val utcDateParser = SimpleDateFormat("MM/dd/yyyy HH:mm:ss.SSS")
+                    utcDateParser.timeZone = TimeZone.getTimeZone("GMT")
+                    utcDateParser.parse(firstLog.timestamp).time
+                }
+                val key = LogKey(path, it.host, firstTimestamp, 0, isClosed)
+                s3LogWriter.write(key, it.content)
+                return@map firstTimestamp
+            }
         }
-        val key = LogKey(path, incomingLog.host, firstTimestamp, 0, isClosed)
-        s3LogWriter.write(key, incomingLog.content)
-        return firstTimestamp
+
     }
 
     override fun logResultEvents(path: List<String>,

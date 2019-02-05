@@ -10,6 +10,6 @@ import reactor.core.publisher.Mono
 @Service @Lazy
 class WriteLogImpl(private val logService: LogService): WriteLog {
     override fun writeLog(request: WriteLogRequest) : Mono<Long> {
-        return Mono.just(logService.writeLogs(request.path, request.incomingLog, request.closed))
+        return logService.writeLogs(request.path, request.incomingLog, request.closed)
     }
 }
