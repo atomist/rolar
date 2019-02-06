@@ -4,7 +4,9 @@ import com.atomist.rolar.domain.LogKeysAfter
 import com.atomist.rolar.domain.LogService
 import com.atomist.rolar.domain.model.IncomingLog
 import com.atomist.rolar.domain.model.LogKey
+import com.atomist.rolar.domain.model.LogLine
 import com.atomist.rolar.domain.model.LogResults
+import org.joda.time.DateTime
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -12,6 +14,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.text.SimpleDateFormat
 import java.time.Duration
+import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Consumer
@@ -24,6 +27,8 @@ constructor(private val s3LogReader: S3LogReader,
 
     private final val delay: Duration = Duration.ofSeconds(2)
     private final val logger: Logger = LoggerFactory.getLogger("s3logservice")
+
+    val FORCE_CLOSED_KEY = "___ATOMIST_FLUX_CLOSED"
 
     override fun writeLogs(path: List<String>, incomingLog: Mono<IncomingLog>, isClosed: Boolean): Mono<Long> {
         return incomingLog.map {
@@ -53,7 +58,12 @@ constructor(private val s3LogReader: S3LogReader,
             run {
                 var currentLastKey: LogKey? = null
                 var lastS3Key: String? = null
+                var started = LocalDateTime.now()
                 while (currentLastKey == null || !(currentLastKey.isClosed && currentLastKey.path == path)) {
+                    if(started.plusMinutes(30).isBefore(LocalDateTime.now())) {
+                        sink.next(LogKeysAfter(listOf(LogKey(listOf(), "", DateTime.now().millis, DateTime.now().millis, false, false, FORCE_CLOSED_KEY)), FORCE_CLOSED_KEY))
+                        break
+                    }
                     logger.info("Reading keys for ${path.joinToString("/")} from ${lastS3Key}")
                     val logKeys = s3LogReader.readLogKeys(path, lastS3Key)
                     if (logKeys.isEmpty()) {
@@ -70,27 +80,37 @@ constructor(private val s3LogReader: S3LogReader,
             }
         }
         return logEvents.flatMapSequential {
-            val logKeys = if (it.lastKey == null &&
-                    prioritizeRecent != 0 && (historyLimit == 0 || prioritizeRecent < historyLimit)) {
-                val isLogClosed = it.keys.isNotEmpty() && it.keys.last().isClosed
-                val recentLogs = it.keys.takeLast(prioritizeRecent)
-                val reversedHistory = it.keys.take(Math.max(0, it.keys.size - prioritizeRecent))
-                        .reversed()
-                        .map { it.copy(prepend = true) }
-                val orderedLogKeys = recentLogs + reversedHistory
-                if (isLogClosed) {
-                    orderedLogKeys.mapIndexed { i, lk -> lk.copy(isClosed = i + 1 >= orderedLogKeys.size) }
-                } else {
-                    orderedLogKeys
-                }
+            if(it.lastKey == FORCE_CLOSED_KEY) {
+                val flux = Flux.fromIterable(it.keys)
+                flux
             } else {
-                it.keys
+                val logKeys = if (it.lastKey == null &&
+                        prioritizeRecent != 0 && (historyLimit == 0 || prioritizeRecent < historyLimit)) {
+                    val isLogClosed = it.keys.isNotEmpty() && it.keys.last().isClosed
+                    val recentLogs = it.keys.takeLast(prioritizeRecent)
+                    val reversedHistory = it.keys.take(Math.max(0, it.keys.size - prioritizeRecent))
+                            .reversed()
+                            .map { it.copy(prepend = true) }
+                    val orderedLogKeys = recentLogs + reversedHistory
+                    if (isLogClosed) {
+                        orderedLogKeys.mapIndexed { i, lk -> lk.copy(isClosed = i + 1 >= orderedLogKeys.size) }
+                    } else {
+                        orderedLogKeys
+                    }
+                } else {
+                    it.keys
+                }
+                val flux = Flux.fromIterable(logKeys)
+                flux
             }
-            Flux.fromIterable(logKeys)
         }
                 .map { logKey ->
-                    val logLines = s3LogReader.readLogContent(logKey)
-                    LogResults(logKey, logLines)
+                    if(logKey.key == FORCE_CLOSED_KEY) {
+                        LogResults(logKey, listOf(LogLine("INFO", "The logging stream has closed after 30 minutes. Please press refresh to resume streaming", DateTime.now().toString(), DateTime.now().millis  )))
+                    } else {
+                        val logLines = s3LogReader.readLogContent(logKey)
+                        LogResults(logKey, logLines)
+                    }
                 }
     }
 
