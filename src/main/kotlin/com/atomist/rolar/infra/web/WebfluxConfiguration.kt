@@ -31,11 +31,4 @@ class WebfluxConfiguration: WebFluxConfigurer {
     }
 
     data class Health(val status: String)
-
-    override fun addCorsMappings(registry: CorsRegistry) {
-        registry.addMapping("/**")
-                .allowedOrigins("*")
-                .allowedMethods("GET, POST")
-                .allowedHeaders("Authorization")
-    }
 }
