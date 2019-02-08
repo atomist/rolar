@@ -18,8 +18,7 @@ import java.util.*
 @Lazy
 class LogControllerFunctions(private var getLogs: GetLogs, private var streamLogs: StreamLogs, private var writeLog: WriteLog) {
     fun check(request: ServerRequest): Mono<ServerResponse> {
-        val path = getWildcardPath(request)
-        val logs =  Flux.just(LogResults(LogKey(path, "unknown", Date().time, Date().time, false), listOf()))
+        val logs =  Flux.just(LogResults(LogKey(listOf(""), "unknown", Date().time, Date().time, false), listOf()))
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(logs, LogResults::class.java)
