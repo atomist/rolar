@@ -12,6 +12,7 @@ import com.nhaarman.mockito_kotlin.*
 import io.kotlintest.specs.StringSpec
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
+import java.util.function.Consumer
 
 class LogServiceTest : StringSpec({
 
@@ -118,7 +119,8 @@ class LogServiceTest : StringSpec({
                 lkm.nextLogKeyBatch(2, 1, true)
         )
 
-        val logResults = logService.logResultEvents(listOf("a", "b", "c"))
+        val logResults = logService.streamResultEvents(listOf("a", "b", "c"))
+        logResults.subscribe { r -> println(r.lastKey) }
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 1, false))
                 .expectNext(constructLogResults(1, 2, false))
@@ -132,7 +134,7 @@ class LogServiceTest : StringSpec({
                 lkm.nextLogKeyBatch(1, 7, true)
         )
 
-        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 2)
+        val logResults = logService.streamResultEvents(listOf("a", "b", "c"), 2)
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 6, false))
                 .expectNext(constructLogResults(1, 7, false))
@@ -153,7 +155,7 @@ class LogServiceTest : StringSpec({
                 lkm.nextLogKeyBatch(2, 2, true)
         )
 
-        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 2)
+        val logResults = logService.streamResultEvents(listOf("a", "b", "c"), 2)
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 6, false))
                 .expectNext(constructLogResults(1, 7, false))

@@ -25,7 +25,7 @@ class S3LogService
 constructor(private val s3LogReader: S3LogReader,
             private val s3LogWriter: S3LogWriter) : LogService {
 
-    private final val delay: Duration = Duration.ofSeconds(2)
+    private final val delay: Duration = Duration.ofMillis(2000)
     private final val logger: Logger = LoggerFactory.getLogger("s3logservice")
 
     val FORCE_CLOSED_KEY = "___ATOMIST_FLUX_CLOSED"
