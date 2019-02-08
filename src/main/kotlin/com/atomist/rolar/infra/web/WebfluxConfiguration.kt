@@ -3,6 +3,7 @@ package com.atomist.rolar.infra.web
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.MediaType
+import org.springframework.web.reactive.config.CorsRegistry
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import org.springframework.web.reactive.function.server.ServerResponse
@@ -30,4 +31,11 @@ class WebfluxConfiguration: WebFluxConfigurer {
     }
 
     data class Health(val status: String)
+
+    override fun addCorsMappings(registry: CorsRegistry) {
+        registry.addMapping("/**")
+                .allowedOrigins("*")
+                .allowedMethods("GET, POST")
+                .allowedHeaders("Authorization")
+    }
 }
