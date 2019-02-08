@@ -27,7 +27,7 @@ class LogControllerFunctions(private var getLogs: GetLogs, private var streamLog
     fun getLogs(request: ServerRequest): Mono<ServerResponse> {
         val path = getWildcardPath(request)
         val prioritize = request.queryParam("prioritize").orElse("0")
-        val historyLimit = request.queryParam("prioritize").orElse("0")
+        val historyLimit = request.queryParam("historyLimit").orElse("0")
         return if(path.isEmpty() || path.joinToString("") == "") {
             val logs =  Flux.just(LogResults(LogKey(path, "unknown", Date().time, Date().time, false), listOf()))
             ServerResponse.ok()
@@ -43,7 +43,7 @@ class LogControllerFunctions(private var getLogs: GetLogs, private var streamLog
 
     fun streamLogs(request: ServerRequest): Mono<ServerResponse> {
         val prioritize = request.queryParam("prioritize").orElse("0")
-        val historyLimit = request.queryParam("prioritize").orElse("0")
+        val historyLimit = request.queryParam("historyLimit").orElse("0")
         val logs = streamLogs.getLogs(StreamLogsRequest(getWildcardPath(request), prioritize.toInt(), historyLimit.toInt()))
         return ServerResponse.ok()
                 .contentType(MediaType.TEXT_EVENT_STREAM)
