@@ -1,29 +1,27 @@
+package com.atomist.rolar.infra.web.security
+
+import com.atomist.rolar.infra.s3.S3LoggingServiceProperties
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
-import java.io.IOException
+import org.springframework.web.server.ServerWebExchange
 
-import javax.servlet.FilterChain
-import javax.servlet.ServletException
-import javax.servlet.ServletRequest
-import javax.servlet.ServletResponse
-import javax.servlet.http.HttpServletRequest
+import org.springframework.web.server.WebFilter
+import org.springframework.web.server.WebFilterChain
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 
-import org.springframework.web.filter.GenericFilterBean
+@Component
+class JwtGateFilter(val s3LoggingServiceProperties: S3LoggingServiceProperties) : WebFilter {
 
-import javax.servlet.http.HttpServletResponse
-
-class JwtGateFilter(val authServerBaseUrl: String) : GenericFilterBean() {
-
-    @Throws(IOException::class, ServletException::class)
-    override fun doFilter(req: ServletRequest,
-                          res: ServletResponse,
-                          chain: FilterChain) {
-        val request = req as HttpServletRequest
-
-        val authHeader = request.getHeader("Authorization") ?: "Bearer ${request.getParameter("auth")}"
-        if (request.method == HttpMethod.GET.name) {
+    @Override
+    override fun filter(exchange: ServerWebExchange,
+                        chain: WebFilterChain) : Mono<Void> {
+        val authHeader = exchange.request.headers.getFirst("Authorization") ?: "Bearer ${exchange.request.queryParams.getFirst("auth")}"
+        if (exchange.request.method == HttpMethod.GET && exchange.request.path.pathWithinApplication().value().startsWith("/api")) {
             val headers = HttpHeaders()
             headers.set("Authorization", authHeader)
             headers.set("Content-Type", "application/json")
@@ -44,21 +42,21 @@ class JwtGateFilter(val authServerBaseUrl: String) : GenericFilterBean() {
             }"""
             val authRequest = HttpEntity<String>("{\"query\": \"$query\"}", headers)
             val authResponse = RestTemplate().postForEntity(
-                    "$authServerBaseUrl/graphql",
+                    "${s3LoggingServiceProperties.auth_server_base_url}/graphql",
                     authRequest,
                     AuthResult::class.java)
             val persons = authResponse.body?.data?.personByIdentity ?: listOf()
             val validRoots = persons.map { p -> p.team?.id }.filterNotNull()
 
-            val root = req.servletPath.substringAfter("/logs/").substringBefore("/")
-            if (validRoots.contains(root)) {
-                chain.doFilter(req, res)
+            val root = exchange.request.path.pathWithinApplication().value().substringAfter("/logs/").substringBefore("/")
+            return if (validRoots.contains(root)) {
+                chain.filter(exchange)
             } else {
-                (res as HttpServletResponse).sendError(HttpServletResponse.SC_UNAUTHORIZED,
-                        "Invalid token for root '$root'")
+                exchange.response.statusCode = HttpStatus.UNAUTHORIZED
+                exchange.response.writeWith { Flux.just("Invalid token for root '$root'") }
             }
         } else {
-            chain.doFilter(req, res)
+            return chain.filter(exchange)
         }
     }
 

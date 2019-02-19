@@ -1,5 +1,5 @@
 applications:
-- name: rolar
+- name: rolar2
   memory: 1024M
   instances: 1
   buildpack: https://github.com/cloudfoundry/java-buildpack.git

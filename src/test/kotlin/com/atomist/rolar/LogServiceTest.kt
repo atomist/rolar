@@ -1,9 +1,18 @@
 package com.atomist.rolar
 
+import com.atomist.rolar.domain.model.IncomingLog
+import com.atomist.rolar.domain.model.LogKey
+import com.atomist.rolar.domain.model.LogLine
+import com.atomist.rolar.domain.model.LogResults
+import com.atomist.rolar.infra.s3.S3LogReader
+import com.atomist.rolar.infra.s3.S3LogService
+import com.atomist.rolar.infra.s3.S3LogWriter
+import com.atomist.rolar.infra.s3.toS3Key
 import com.nhaarman.mockito_kotlin.*
 import io.kotlintest.specs.StringSpec
+import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.Duration
+import java.util.function.Consumer
 
 class LogServiceTest : StringSpec({
 
@@ -37,7 +46,7 @@ class LogServiceTest : StringSpec({
 
     val s3LogWriter: S3LogWriter = mock()
 
-    val logService = LogsService(s3LogReader, s3LogWriter, Duration.ZERO)
+    val logService = S3LogService(s3LogReader, s3LogWriter)
 
     "write a log message with string formatted timestamp" {
         val logContent = listOf(
@@ -49,17 +58,17 @@ class LogServiceTest : StringSpec({
                 )
         )
         logService.writeLogs(listOf("a", "b", "c"),
-                IncomingLog(
+                Mono.just(IncomingLog(
                         "mbp",
                         logContent
-                ))
+                ))).subscribe()
         verify(s3LogWriter).write(LogKey(
                 listOf("a", "b", "c"),
                 "mbp",
                 1533045923136,
                 0,
                 false
-            ),
+        ),
             logContent
         )
     }
@@ -74,10 +83,10 @@ class LogServiceTest : StringSpec({
                 )
         )
         logService.writeLogs(listOf("a", "b", "c"),
-                IncomingLog(
+                Mono.just(IncomingLog(
                         "mbp",
                         logContent
-                ))
+                ))).subscribe()
         verify(s3LogWriter).write(LogKey(
                 listOf("a", "b", "c"),
                 "mbp",
@@ -110,7 +119,8 @@ class LogServiceTest : StringSpec({
                 lkm.nextLogKeyBatch(2, 1, true)
         )
 
-        val logResults = logService.logResultEvents(listOf("a", "b", "c"))
+        val logResults = logService.streamResultEvents(listOf("a", "b", "c"))
+        logResults.subscribe { r -> println(r.lastKey) }
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 1, false))
                 .expectNext(constructLogResults(1, 2, false))
@@ -124,7 +134,7 @@ class LogServiceTest : StringSpec({
                 lkm.nextLogKeyBatch(1, 7, true)
         )
 
-        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 2)
+        val logResults = logService.streamResultEvents(listOf("a", "b", "c"), 2)
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 6, false))
                 .expectNext(constructLogResults(1, 7, false))
@@ -145,7 +155,7 @@ class LogServiceTest : StringSpec({
                 lkm.nextLogKeyBatch(2, 2, true)
         )
 
-        val logResults = logService.logResultEvents(listOf("a", "b", "c"), 2)
+        val logResults = logService.streamResultEvents(listOf("a", "b", "c"), 2)
         StepVerifier.create(logResults)
                 .expectNext(constructLogResults(1, 6, false))
                 .expectNext(constructLogResults(1, 7, false))
@@ -171,13 +181,13 @@ class LogKeyMaker {
 
     fun constructLogKey(batch: Int, index: Int, closed: Boolean = true, prepend: Boolean = false): LogKey {
         return LogKey(
-            listOf("a", "b", "c"),
-            "$batch.$index",
-            1531742400000 + (batch * 1000) + index,
-            1531742400000 + (batch * 1000) + index,
-            closed,
-            prepend,
-            "$batch.$index"
+                listOf("a", "b", "c"),
+                "$batch.$index",
+                1531742400000 + (batch * 1000) + index,
+                1531742400000 + (batch * 1000) + index,
+                closed,
+                prepend,
+                "$batch.$index"
         )
     }
 }
