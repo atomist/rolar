@@ -1,36 +1,39 @@
 package com.atomist.rolar.infra.s3
 
-import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.s3.model.GetObjectRequest
-import com.amazonaws.services.s3.model.ListObjectsRequest
-import com.amazonaws.services.s3.model.S3ObjectSummary
 import com.atomist.rolar.domain.model.LogKey
 import com.atomist.rolar.domain.model.LogLine
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import org.springframework.util.StreamUtils
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.GetObjectRequest
+import software.amazon.awssdk.services.s3.model.ListObjectsRequest
+import software.amazon.awssdk.services.s3.model.S3Object
+import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Service
 class S3LogReader @Autowired
-constructor(private val s3Client: AmazonS3,
+constructor(private val s3Client: S3Client,
             s3LoggingServiceProperties: S3LoggingServiceProperties) {
 
     private val mapper = jacksonObjectMapper()
     private val bucketName = s3LoggingServiceProperties.s3_logging_bucket
 
     fun readLogKeys(path: List<String>, lastS3Key: String? = null): List<LogKey> {
-        val request = ListObjectsRequest()
-                .withBucketName(bucketName)
-                .withPrefix("${path.joinToString("/")}/")
-                .withMarker(lastS3Key)
-        var objectListing = s3Client.listObjects(request)
-        val allObjectSummaries = objectListing.getObjectSummaries()
-        while (objectListing.nextMarker != null) {
-            objectListing = s3Client.listObjects(request.withMarker(objectListing.nextMarker))
-            allObjectSummaries.addAll(objectListing.getObjectSummaries())
+        val request = ListObjectsRequest.builder()
+                .bucket(bucketName)
+                .prefix("${path.joinToString("/")}/")
+                .marker(lastS3Key)
+
+        var objectListing = s3Client.listObjects(request.build())
+        val allObjectSummaries = objectListing.contents()
+        while (objectListing.nextMarker() != null) {
+            objectListing = s3Client.listObjects(request.marker(objectListing.nextMarker()).build())
+            allObjectSummaries.addAll(objectListing.contents())
         }
         return allObjectSummaries.map { s ->
             LogKey.fromS3ObjectSummary(s)
@@ -38,8 +41,11 @@ constructor(private val s3Client: AmazonS3,
     }
 
     fun readLogContent(logKey: LogKey): List<LogLine> {
-        val s3Object = s3Client.getObject(GetObjectRequest(bucketName, logKey.toS3Key()))
-        val logContent = s3Object.objectContent.bufferedReader().use { it.readText() }
+        val request = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(logKey.toS3Key())
+        val s3Object = s3Client.getObject(request.build())
+        val logContent = StreamUtils.copyToString(s3Object, Charset.defaultCharset())
         val logs: List<LogLine> = mapper.readValue(logContent)
         val preferMillisTimestampLogs = logs.map {
             val ts = if (it.timestampMillis != null) {
@@ -68,12 +74,12 @@ fun LogKey.toS3Key(): String {
     }
 }
 
-fun LogKey.Companion.fromS3ObjectSummary(s3ObjectSummary: S3ObjectSummary): LogKey {
-    val key = s3ObjectSummary.key
+fun LogKey.Companion.fromS3ObjectSummary(s3ObjectSummary: S3Object): LogKey {
+    val key = s3ObjectSummary.key()
     return LogKey(
             key.substringBefore("Z_").split("/").dropLast(1),
             key.substringAfter("Z_").substringBeforeLast("_CLOSED.log").substringBeforeLast(".log"),
-            s3ObjectSummary.lastModified.time,
+            s3ObjectSummary.lastModified().toEpochMilli(),
             LogKey.constructGmtFormat().parse(key.substringBefore("Z_").substringAfterLast("/")).time,
             key.endsWith("CLOSED.log"),
             false,

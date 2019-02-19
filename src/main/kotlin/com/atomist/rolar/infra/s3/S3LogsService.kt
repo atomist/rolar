@@ -6,7 +6,6 @@ import com.atomist.rolar.domain.model.IncomingLog
 import com.atomist.rolar.domain.model.LogKey
 import com.atomist.rolar.domain.model.LogLine
 import com.atomist.rolar.domain.model.LogResults
-import org.joda.time.DateTime
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -16,9 +15,6 @@ import java.text.SimpleDateFormat
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.*
-import java.util.concurrent.atomic.AtomicReference
-import java.util.function.Consumer
-import kotlin.concurrent.timerTask
 
 @Service
 class S3LogService
@@ -61,7 +57,7 @@ constructor(private val s3LogReader: S3LogReader,
                 var started = LocalDateTime.now()
                 while (currentLastKey == null || !(currentLastKey.isClosed && currentLastKey.path == path)) {
                     if(started.plusMinutes(30).isBefore(LocalDateTime.now())) {
-                        sink.next(LogKeysAfter(listOf(LogKey(listOf(), "", DateTime.now().millis, DateTime.now().millis, false, false, FORCE_CLOSED_KEY)), FORCE_CLOSED_KEY))
+                        sink.next(LogKeysAfter(listOf(LogKey(listOf(), "", System.currentTimeMillis(), System.currentTimeMillis(), false, false, FORCE_CLOSED_KEY)), FORCE_CLOSED_KEY))
                         break
                     }
                     logger.info("Reading keys for ${path.joinToString("/")} from ${lastS3Key}")
@@ -106,7 +102,7 @@ constructor(private val s3LogReader: S3LogReader,
         }
                 .map { logKey ->
                     if(logKey.key == FORCE_CLOSED_KEY) {
-                        LogResults(logKey, listOf(LogLine("INFO", "The logging stream has closed after 30 minutes. Please press refresh to resume streaming", DateTime.now().toString(), DateTime.now().millis  )))
+                        LogResults(logKey, listOf(LogLine("INFO", "The logging stream has closed after 30 minutes. Please press refresh to resume streaming", LocalDateTime.now().toString(), System.currentTimeMillis()  )))
                     } else {
                         val logLines = s3LogReader.readLogContent(logKey)
                         LogResults(logKey, logLines)
