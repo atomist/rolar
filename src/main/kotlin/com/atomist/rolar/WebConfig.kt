@@ -14,5 +14,6 @@ class WebConfig: WebFluxConfigurer
                 .allowedOrigins("*")
                 .allowedMethods("GET, POST")
                 .allowedHeaders("Authorization")
+
     }
 }
