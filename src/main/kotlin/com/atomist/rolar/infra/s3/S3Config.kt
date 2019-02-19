@@ -13,7 +13,6 @@ class S3Config(val props: S3LoggingServiceProperties) {
 
     @Bean @Lazy
     fun s3Client(): S3Client {
-
         val creds = AwsBasicCredentials.create(props.aws_access_key_id,
                 props.aws_secret_access_key)
 
@@ -21,6 +20,5 @@ class S3Config(val props: S3LoggingServiceProperties) {
                 .credentialsProvider(StaticCredentialsProvider.create(creds))
                 .region(Region.of(props.region))
                 .build()
-
     }
 }
