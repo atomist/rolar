@@ -15,6 +15,7 @@ class S3Config(val props: S3LoggingServiceProperties) {
     fun s3Client(): S3Client {
         val creds = AwsBasicCredentials.create(props.aws_access_key_id,
                 props.aws_secret_access_key)
+
         return S3Client.builder()
                 .credentialsProvider(StaticCredentialsProvider.create(creds))
                 .region(Region.of(props.region))
