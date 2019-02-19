@@ -8,7 +8,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>rolar</name>
+	<name>rolar</name> 
 	<description>log aggregation from s3</description>
 
 	<parent>
