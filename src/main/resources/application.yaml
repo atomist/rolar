@@ -1,0 +1,15 @@
+cloud:
+  aws:
+    region:
+      static: ${AWS_REGION:us-east-1}
+vcap:
+  services:
+    s3-logging:
+      credentials:
+        aws_access_key_id: ${AWS_ACCESS_KEY_ID:}
+        aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY:}
+        s3_logging_bucket: ${S3_LOGGING_BUCKET:}
+        auth_server_base_url: ${AUTH_SERVER_BASE_URL:}
+        region: ${cloud.aws.region.static}
+atomist:
+  url: https://webhook.atomist.com/atomist/application/teams/T29E48P34
