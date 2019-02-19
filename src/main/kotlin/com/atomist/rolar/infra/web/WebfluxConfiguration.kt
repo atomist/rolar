@@ -22,13 +22,5 @@ class WebfluxConfiguration: WebFluxConfigurer {
         HEAD("/api/logs/{*path}").invoke(logFunctions::check)
     }
 
-    @Bean
-    fun actuatorRouter() = router {
-        GET("/actuator/health") { req -> ServerResponse.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Mono.just(Health("UP")), Health::class.java)
-        }
-    }
-
     data class Health(val status: String)
 }
