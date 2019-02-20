@@ -20,10 +20,15 @@ class JwtGateFilter(val s3LoggingServiceProperties: S3LoggingServiceProperties) 
     @Override
     override fun filter(exchange: ServerWebExchange,
                         chain: WebFilterChain) : Mono<Void> {
-        val authHeader = exchange.request.headers.getFirst("Authorization") ?: "Bearer ${exchange.request.queryParams.getFirst("auth")}"
+        val authCookie = exchange.request.cookies.getFirst("access_token")
+        val authHeader = exchange.request.headers.getFirst("Authorization")
+        val authParam = exchange.request.queryParams.getFirst("auth")
+        val auth = authCookie?.let {
+            "Bearer ${it.value}"
+        } ?: (authHeader ?: "Bearer $authParam")
         if (exchange.request.method == HttpMethod.GET && exchange.request.path.pathWithinApplication().value().startsWith("/api")) {
             val headers = HttpHeaders()
-            headers.set("Authorization", authHeader)
+            headers.set("Authorization", auth)
             headers.set("Content-Type", "application/json")
             val query = """query User {
                 personByIdentity {
@@ -40,7 +45,7 @@ class JwtGateFilter(val s3LoggingServiceProperties: S3LoggingServiceProperties) 
                   }
                 }
             }"""
-            val authRequest = HttpEntity<String>("{\"query\": \"$query\"}", headers)
+            val authRequest = HttpEntity("{\"query\": \"$query\"}", headers)
             val authResponse = RestTemplate().postForEntity(
                     "${s3LoggingServiceProperties.auth_server_base_url}/graphql",
                     authRequest,

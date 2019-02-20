@@ -33,6 +33,15 @@
                 }
               },
               {
+                "name": "CORS_ALLOWED_ORIGIN",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "aws-s3-logger",
+                    "key": "cors-allowed-origin"
+                  }
+                }
+              },
+              {
                 "name": "AUTH_SERVER_BASE_URL",
                 "valueFrom": {
                   "secretKeyRef": {
