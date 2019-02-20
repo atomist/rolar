@@ -13,3 +13,6 @@ vcap:
         region: ${cloud.aws.region.static}
 atomist:
   url: https://webhook.atomist.com/atomist/application/teams/T29E48P34
+  rolar:
+    cors:
+      allowed-origin: ${CORS_ALLOWED_ORIGIN:}
