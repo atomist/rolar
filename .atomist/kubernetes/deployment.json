@@ -37,7 +37,7 @@
                 "valueFrom": {
                   "secretKeyRef": {
                     "name": "aws-s3-logger",
-                    "key": "cors-allowed-origin"
+                    "key": "corsAllowedOrigin"
                   }
                 }
               },
