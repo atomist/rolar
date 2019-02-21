@@ -4,6 +4,7 @@ import com.atomist.rolar.domain.model.LogKey
 import com.atomist.rolar.domain.model.LogLine
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.util.StreamUtils
@@ -11,6 +12,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest
 import software.amazon.awssdk.services.s3.model.S3Object
+import java.lang.RuntimeException
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.*
@@ -22,42 +24,53 @@ constructor(private val s3Client: S3Client,
 
     private val mapper = jacksonObjectMapper()
     private val bucketName = s3LoggingServiceProperties.s3_logging_bucket
+    private val logger = LoggerFactory.getLogger("s3-log-reader")
 
     fun readLogKeys(path: List<String>, lastS3Key: String? = null): List<LogKey> {
-        val request = ListObjectsRequest.builder()
-                .bucket(bucketName)
-                .prefix("${path.joinToString("/")}/")
-                .marker(lastS3Key)
+        try {
+            val request = ListObjectsRequest.builder()
+                    .bucket(bucketName)
+                    .prefix("${path.joinToString("/")}/")
+                    .marker(lastS3Key)
 
-        var objectListing = s3Client.listObjects(request.build())
-        val allObjectSummaries = objectListing.contents()
-        while (objectListing.nextMarker() != null) {
-            objectListing = s3Client.listObjects(request.marker(objectListing.nextMarker()).build())
-            allObjectSummaries.addAll(objectListing.contents())
-        }
-        return allObjectSummaries.map { s ->
-            LogKey.fromS3ObjectSummary(s)
+            var objectListing = s3Client.listObjects(request.build())
+            val allObjectSummaries = objectListing.contents()
+            while (objectListing.nextMarker() != null) {
+                objectListing = s3Client.listObjects(request.marker(objectListing.nextMarker()).build())
+                allObjectSummaries.addAll(objectListing.contents())
+            }
+            return allObjectSummaries.map { s ->
+                LogKey.fromS3ObjectSummary(s)
+            }
+        } catch(ex: RuntimeException) {
+            logger.error("Error reading logs", ex)
+            throw RuntimeException("Error reading logs")
         }
     }
 
     fun readLogContent(logKey: LogKey): List<LogLine> {
-        val request = GetObjectRequest.builder()
-                .bucket(bucketName)
-                .key(logKey.toS3Key())
-        val s3Object = s3Client.getObject(request.build())
-        val logContent = StreamUtils.copyToString(s3Object, Charset.defaultCharset())
-        val logs: List<LogLine> = mapper.readValue(logContent)
-        val preferMillisTimestampLogs = logs.map {
-            val ts = if (it.timestampMillis != null) {
-                val utcDateFormat = SimpleDateFormat("MM/dd/yyyy HH:mm:ss.SSS")
-                utcDateFormat.timeZone = TimeZone.getTimeZone("GMT")
-                utcDateFormat.format(it.timestampMillis)
-            } else {
-                it.timestamp
+        try {
+            val request = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(logKey.toS3Key())
+            val s3Object = s3Client.getObject(request.build())
+            val logContent = StreamUtils.copyToString(s3Object, Charset.defaultCharset())
+            val logs: List<LogLine> = mapper.readValue(logContent)
+            val preferMillisTimestampLogs = logs.map {
+                val ts = if (it.timestampMillis != null) {
+                    val utcDateFormat = SimpleDateFormat("MM/dd/yyyy HH:mm:ss.SSS")
+                    utcDateFormat.timeZone = TimeZone.getTimeZone("GMT")
+                    utcDateFormat.format(it.timestampMillis)
+                } else {
+                    it.timestamp
+                }
+                it.copy(timestamp = ts)
             }
-            it.copy(timestamp = ts)
+            return preferMillisTimestampLogs
+        } catch(ex: RuntimeException) {
+            logger.error("Error reading logs", ex)
+            throw RuntimeException("Error reading log content")
         }
-        return preferMillisTimestampLogs
     }
 }
 
