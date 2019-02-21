@@ -17,6 +17,8 @@ class WebConfig: WebFluxConfigurer
     private val ALLOWED_HEADERS = "x-requested-with, authorization, Content-Type, Authorization, credential, X-XSRF-TOKEN"
     private val ALLOWED_METHODS = "GET, PUT, POST, DELETE, OPTIONS"
     private val MAX_AGE = "3600"
+    private val EXPOSE_HEADERS = "*"
+    private val ALLOW_CREDENTIALS = "true"
 
     @Bean
     fun corsFilter(webProperties: WebProperties): WebFilter {
@@ -29,6 +31,8 @@ class WebConfig: WebFluxConfigurer
                 headers.add("Access-Control-Allow-Methods", ALLOWED_METHODS)
                 headers.add("Access-Control-Max-Age", MAX_AGE)
                 headers.add("Access-Control-Allow-Headers", ALLOWED_HEADERS)
+                headers.add("Access-Control-Expose-Headers", EXPOSE_HEADERS)
+                headers.add("Access-Control-Allow-Credentials", ALLOW_CREDENTIALS)
                 if (request.method === HttpMethod.OPTIONS) {
                     response.statusCode = HttpStatus.OK
                     return@WebFilter Mono.empty<Void>()
