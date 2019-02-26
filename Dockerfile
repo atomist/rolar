@@ -1,4 +1,4 @@
-FROM openjdk:8u131-jdk
+FROM adoptopenjdk/openjdk8-openj9
 
 LABEL maintainer="Atomist <docker@atomist.com>"
 
@@ -21,7 +21,7 @@ RUN mkdir -p /opt/app
 
 WORKDIR /opt/app
 
-ENTRYPOINT ["dumb-init", "java", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-Djava.net.preferIPv4Stack=true", "-Djava.security.egd=file:/dev/urandom"]
+ENTRYPOINT ["dumb-init", "java"]
 
 CMD ["-Xmx2048m", "-jar", "/opt/app/app.jar"]
 
