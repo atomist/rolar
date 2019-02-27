@@ -52,11 +52,11 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
     }
 
     @RequestMapping(value = ["api/logs/**"], method = arrayOf(RequestMethod.POST))
-    fun postLog(@RequestParam closed: String?,
+    fun postLog(@RequestParam closed: Boolean? = false,
                 @RequestBody incomingLog: IncomingLog,
                 request: HttpServletRequest): Long {
         val path = constructPathFromUriWildcardSuffix(request)
-        val writeResult = writeLog.writeLog(WriteLogRequest(path, closed!!.toBoolean(), Mono.just(incomingLog)))
+        val writeResult = writeLog.writeLog(WriteLogRequest(path, closed ?: false, Mono.just(incomingLog)))
         return writeResult.block()!!
     }
 
