@@ -1,44 +1,33 @@
 package com.atomist.rolar.infra.web
 
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
-import org.springframework.web.cors.reactive.CorsUtils
-import org.springframework.web.reactive.config.EnableWebFlux
-import org.springframework.web.reactive.config.WebFluxConfigurer
-import org.springframework.web.server.WebFilter
-import reactor.core.publisher.Mono
+import org.springframework.scheduling.concurrent.ConcurrentTaskExecutor
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
+import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer
+import org.springframework.web.servlet.config.annotation.CorsRegistry
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
 @Configuration
-@EnableWebFlux
-class WebConfig: WebFluxConfigurer
+class WebConfig(private val webProperties: WebProperties): WebMvcConfigurer
 {
     private val ALLOWED_HEADERS = "x-requested-with, authorization, Content-Type, Authorization, credential, X-XSRF-TOKEN"
     private val ALLOWED_METHODS = "GET, PUT, POST, DELETE, OPTIONS"
-    private val MAX_AGE = "3600"
-    private val EXPOSE_HEADERS = "*"
-    private val ALLOW_CREDENTIALS = "true"
+    private val MAX_AGE = 3600L
+    private val EXPOSE_HEADERS = ALLOWED_HEADERS
+    private val ALLOW_CREDENTIALS = true
 
-    @Bean
-    fun corsFilter(webProperties: WebProperties): WebFilter {
-        return WebFilter { ctx, chain ->
-            val request = ctx.request
-            if (CorsUtils.isCorsRequest(request)) {
-                val response = ctx.response
-                val headers = response.headers
-                headers.add("Access-Control-Allow-Origin", webProperties.allowedOrigin)
-                headers.add("Access-Control-Allow-Methods", ALLOWED_METHODS)
-                headers.add("Access-Control-Max-Age", MAX_AGE)
-                headers.add("Access-Control-Allow-Headers", ALLOWED_HEADERS)
-                headers.add("Access-Control-Expose-Headers", EXPOSE_HEADERS)
-                headers.add("Access-Control-Allow-Credentials", ALLOW_CREDENTIALS)
-                if (request.method === HttpMethod.OPTIONS) {
-                    response.statusCode = HttpStatus.OK
-                    return@WebFilter Mono.empty<Void>()
-                }
-            }
-            chain.filter(ctx)
-        }
+    override fun addCorsMappings(registry: CorsRegistry) {
+        registry.addMapping("/**")
+                .allowedOrigins(webProperties.allowedOrigin)
+                .allowedMethods(ALLOWED_METHODS)
+                .allowedHeaders(ALLOWED_HEADERS)
+                .exposedHeaders(EXPOSE_HEADERS)
+                .allowCredentials(ALLOW_CREDENTIALS)
+                .maxAge(MAX_AGE)
+    }
+
+    override fun configureAsyncSupport(configurer: AsyncSupportConfigurer) {
+        val executor = ConcurrentTaskExecutor()
+        configurer.setTaskExecutor(executor)
     }
 }

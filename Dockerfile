@@ -26,5 +26,6 @@ ENTRYPOINT ["dumb-init", "java"]
 CMD ["-Xmx2048m", "-jar", "/opt/app/app.jar"]
 
 EXPOSE 8080
+EXPOSE 8081
 
 COPY target/rolar.jar /opt/app/app.jar

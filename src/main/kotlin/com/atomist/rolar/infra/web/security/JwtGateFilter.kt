@@ -1,32 +1,32 @@
 package com.atomist.rolar.infra.web.security
 
-import com.atomist.rolar.infra.s3.S3LoggingServiceProperties
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
-import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
-import org.springframework.web.server.ServerWebExchange
+import org.springframework.web.filter.GenericFilterBean
+import java.io.IOException
+import javax.servlet.FilterChain
+import javax.servlet.ServletException
+import javax.servlet.ServletRequest
+import javax.servlet.ServletResponse
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
-import org.springframework.web.server.WebFilter
-import org.springframework.web.server.WebFilterChain
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
+class JwtGateFilter(val authServerBaseUrl: String) : GenericFilterBean() {
 
-@Component
-class JwtGateFilter(val s3LoggingServiceProperties: S3LoggingServiceProperties) : WebFilter {
-
-    @Override
-    override fun filter(exchange: ServerWebExchange,
-                        chain: WebFilterChain) : Mono<Void> {
-        val authCookie = exchange.request.cookies.getFirst("access_token")
-        val authHeader = exchange.request.headers.getFirst("Authorization")
-        val authParam = exchange.request.queryParams.getFirst("auth")
+    @Throws(IOException::class, ServletException::class)
+    override fun doFilter(req: ServletRequest,
+                          res: ServletResponse,
+                          chain: FilterChain) {
+        val httpRequest = req as HttpServletRequest
+        val authCookie = httpRequest.cookies.firstOrNull { it.name == "access_token"}
+        val authHeader = httpRequest.getHeader("Authorization")
+        val authParam = httpRequest.getParameter("auth")
         val auth = authCookie?.let {
             "Bearer ${it.value}"
         } ?: (authHeader ?: "Bearer $authParam")
-        if (exchange.request.method == HttpMethod.GET && exchange.request.path.pathWithinApplication().value().startsWith("/api")) {
+        if (httpRequest.method == HttpMethod.GET.name) {
             val headers = HttpHeaders()
             headers.set("Authorization", auth)
             headers.set("Content-Type", "application/json")
@@ -47,21 +47,21 @@ class JwtGateFilter(val s3LoggingServiceProperties: S3LoggingServiceProperties) 
             }"""
             val authRequest = HttpEntity("{\"query\": \"$query\"}", headers)
             val authResponse = RestTemplate().postForEntity(
-                    "${s3LoggingServiceProperties.auth_server_base_url}/graphql",
+                    "$authServerBaseUrl/graphql",
                     authRequest,
                     AuthResult::class.java)
             val persons = authResponse.body?.data?.personByIdentity ?: listOf()
             val validRoots = persons.map { p -> p.team?.id }.filterNotNull()
 
-            val root = exchange.request.path.pathWithinApplication().value().substringAfter("/logs/").substringBefore("/")
-            return if (validRoots.contains(root)) {
-                chain.filter(exchange)
+            val root = req.servletPath.substringAfter("/logs/").substringBefore("/")
+            if (validRoots.contains(root)) {
+                chain.doFilter(req, res)
             } else {
-                exchange.response.statusCode = HttpStatus.UNAUTHORIZED
-                exchange.response.writeWith { Flux.just("Invalid token for root '$root'") }
+                (res as HttpServletResponse).sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                        "Invalid token for root '$root'")
             }
         } else {
-            return chain.filter(exchange)
+            chain.doFilter(req, res)
         }
     }
 
