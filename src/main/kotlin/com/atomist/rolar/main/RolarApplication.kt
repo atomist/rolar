@@ -4,7 +4,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 
-@SpringBootApplication(scanBasePackages = arrayOf("com.atomist.rolar"))
+@SpringBootApplication(scanBasePackages = ["com.atomist.rolar"])
 @EnableConfigurationProperties
 class RolarApplication
 

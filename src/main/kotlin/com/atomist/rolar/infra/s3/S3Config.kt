@@ -12,10 +12,10 @@ class S3Config(val props: S3LoggingServiceProperties) {
 
     @Bean
     fun s3Client(): AmazonS3 {
-        val creds = BasicAWSCredentials(props.aws_access_key_id,
+        val credentials = BasicAWSCredentials(props.aws_access_key_id,
                 props.aws_secret_access_key)
         return AmazonS3ClientBuilder.standard()
-                .withCredentials(AWSStaticCredentialsProvider(creds))
+                .withCredentials(AWSStaticCredentialsProvider(credentials))
                 .withRegion(props.region)
                 .build()
     }

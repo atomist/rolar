@@ -6,11 +6,8 @@ import com.atomist.rolar.domain.model.IncomingLog
 import com.atomist.rolar.domain.model.LogKey
 import com.atomist.rolar.domain.model.LogLine
 import com.atomist.rolar.domain.model.LogResults
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.text.SimpleDateFormat
-import java.time.Duration
 import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.CountDownLatch
@@ -22,8 +19,6 @@ import java.util.function.Consumer
 class S3LogService
 constructor(private val s3LogReader: S3LogReader,
             private val s3LogWriter: S3LogWriter) : LogService {
-
-    private final val logger: Logger = LoggerFactory.getLogger("s3logservice")
 
     val FORCE_CLOSED_KEY = "___ATOMIST_FLUX_CLOSED"
 
@@ -72,10 +67,8 @@ constructor(private val s3LogReader: S3LogReader,
                                     ),
                                     FORCE_CLOSED_KEY
                             ), prioritizeRecent, historyLimit).forEach { handleLogKey(it, logResultConsumer) }
-                    logger.info("Stopped reading")
                     latch.countDown()
                 }
-                logger.info("Reading keys for ${path.joinToString("/")} from ${lastS3Key}")
                 val logKeys = s3LogReader.readLogKeys(path, lastS3Key)
                 if (logKeys.isEmpty()) {
                     getLogKeys(LogKeysAfter(listOf(), lastS3Key), prioritizeRecent, historyLimit)
@@ -88,7 +81,6 @@ constructor(private val s3LogReader: S3LogReader,
                     lastS3Key = currentLastKey!!.toS3Key()
                 }
             } else {
-                logger.info("Stopped reading")
                 latch.countDown()
             }
         }, 0L, 2, TimeUnit.SECONDS)
@@ -105,10 +97,10 @@ constructor(private val s3LogReader: S3LogReader,
     }
 
     private fun getLogKeys(it: LogKeysAfter, prioritizeRecent: Int, historyLimit: Int): List<LogKey> {
-        return if (it.lastKey == FORCE_CLOSED_KEY) {
+        if (it.lastKey == FORCE_CLOSED_KEY) {
             return it.keys
         } else {
-            val logKeys = if (it.lastKey == null &&
+            return if (it.lastKey == null &&
                     prioritizeRecent != 0 && (historyLimit == 0 || prioritizeRecent < historyLimit)) {
                 val isLogClosed = it.keys.isNotEmpty() && it.keys.last().isClosed
                 val recentLogs = it.keys.takeLast(prioritizeRecent)
@@ -124,7 +116,6 @@ constructor(private val s3LogReader: S3LogReader,
             } else {
                 it.keys
             }
-            return logKeys
         }
     }
 

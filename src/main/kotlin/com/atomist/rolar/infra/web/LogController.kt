@@ -23,12 +23,15 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
                @RequestParam historyLimit: Int? = 0,
                request: HttpServletRequest): List<LogResults> {
         val path = constructPathFromUriWildcardSuffix(request)
-        return getLogs.getLogs(GetLogsRequest(path, prioritize ?: 0, historyLimit ?: 0))
+        val consumer = SimpleStateConsumer<GetLogsResponse>()
+        getLogs.getLogs(GetLogsRequest(path, prioritize ?: 0, historyLimit ?: 0), consumer)
+        return consumer.value
     }
 
     @RequestMapping(path = ["api/logs/**"], method = [RequestMethod.HEAD])
     fun getLog(): Long {
-        return writeLog.writeLog(WriteLogRequest(listOf("service_testing"), true, IncomingLog(
+        val consumer = SimpleStateConsumer<WriteLogResponse>()
+        writeLog.writeLog(WriteLogRequest(listOf("service_testing"), true, IncomingLog(
                 "unknown",
                 listOf(LogLine(
                         "info",
@@ -36,7 +39,8 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
                         Date().time.toString(),
                         Date().time
                 ))
-        )))
+        )), consumer)
+        return consumer.value
     }
 
     @GetMapping(value = ["api/reactive/logs/**"])
@@ -54,7 +58,9 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
                 @RequestBody incomingLog: IncomingLog,
                 request: HttpServletRequest): Long {
         val path = constructPathFromUriWildcardSuffix(request)
-        return writeLog.writeLog(WriteLogRequest(path, closed ?: false, incomingLog))
+        val consumer = SimpleStateConsumer<WriteLogResponse>()
+        writeLog.writeLog(WriteLogRequest(path, closed ?: false, incomingLog), consumer)
+        return consumer.value
     }
 
     private fun constructPathFromUriWildcardSuffix(request: HttpServletRequest): List<String> {
@@ -77,6 +83,16 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
             }
         }
 
+    }
+
+    class SimpleStateConsumer<T>: Consumer<T> {
+        private var _value: T? = null
+        val value: T
+            get() = _value!!
+
+        override fun accept(t: T) {
+            _value = t
+        }
     }
 
 }

@@ -1,10 +1,11 @@
 package com.atomist.rolar.app
 
 import com.atomist.rolar.domain.model.LogResults
+import java.util.function.Consumer
 
 
 interface GetLogs {
-    fun getLogs(request: GetLogsRequest): GetLogsResponse
+    fun getLogs(request: GetLogsRequest, responseConsumer: Consumer<GetLogsResponse>)
 }
 
 data class GetLogsRequest(

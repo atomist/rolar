@@ -1,9 +1,10 @@
 package com.atomist.rolar.app
 
 import com.atomist.rolar.domain.model.IncomingLog
+import java.util.function.Consumer
 
 interface WriteLog {
-    fun writeLog(request: WriteLogRequest) : Long
+    fun writeLog(request: WriteLogRequest, responseConsumer: Consumer<WriteLogResponse>)
 }
 
 data class WriteLogRequest(
@@ -11,3 +12,5 @@ data class WriteLogRequest(
         val closed: Boolean,
         val incomingLog: IncomingLog
 )
+
+typealias WriteLogResponse = Long

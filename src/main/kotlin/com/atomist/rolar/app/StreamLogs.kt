@@ -12,3 +12,5 @@ data class StreamLogsRequest(
         val prioritize: Int,
         val historyLimit: Int
 )
+
+typealias StreamLogsResponse = LogResults
