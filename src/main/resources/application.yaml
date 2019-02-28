@@ -22,5 +22,18 @@ management:
   endpoint:
     health:
       show-details: always
+  metrics:
+    export:
+      statsd:
+        host: datadog-agent.default.svc.cluster.local
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.95, 0.99
 server:
   port: 8080
+spring:
+  mvc:
+    async:
+      request-timeout: 1800000

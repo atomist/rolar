@@ -26,8 +26,8 @@ class WebConfig(private val webProperties: WebProperties): WebMvcConfigurer
                 .maxAge(MAX_AGE)
     }
 
-    override fun configureAsyncSupport(configurer: AsyncSupportConfigurer) {
-        val executor = ConcurrentTaskExecutor()
-        configurer.setTaskExecutor(executor)
-    }
+//    override fun configureAsyncSupport(configurer: AsyncSupportConfigurer) {
+//        val executor = ConcurrentTaskExecutor()
+//        configurer.setTaskExecutor(executor)
+//    }
 }

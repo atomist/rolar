@@ -1,9 +1,9 @@
 package com.atomist.rolar.infra.web.security
 
 import com.atomist.rolar.infra.s3.S3LoggingServiceProperties
+import org.springframework.boot.web.servlet.FilterRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.boot.web.servlet.FilterRegistrationBean
 
 @Configuration
 class SecurityConfig(val s3LoggingServiceProperties: S3LoggingServiceProperties) {

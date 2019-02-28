@@ -1,10 +1,10 @@
 package com.atomist.rolar.app
 
 import com.atomist.rolar.domain.model.LogResults
-import reactor.core.publisher.Flux
+import java.util.function.Consumer
 
 interface StreamLogs {
-    fun getLogs(request: StreamLogsRequest): StreamLogsResponse
+    fun getLogs(request: StreamLogsRequest, logResultConsumer: Consumer<LogResults>)
 }
 
 data class StreamLogsRequest(
@@ -12,5 +12,3 @@ data class StreamLogsRequest(
         val prioritize: Int,
         val historyLimit: Int
 )
-
-typealias StreamLogsResponse = Flux<LogResults>

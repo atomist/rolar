@@ -1,7 +1,6 @@
 package com.atomist.rolar.app
 
 import com.atomist.rolar.domain.model.LogResults
-import reactor.core.publisher.Flux
 
 
 interface GetLogs {
@@ -14,7 +13,7 @@ data class GetLogsRequest(
         val historyLimit: Int
 )
 
-typealias GetLogsResponse = Flux<LogResults>
+typealias GetLogsResponse = List<LogResults>
 
 
 
