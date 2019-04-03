@@ -10,7 +10,7 @@
                 "valueFrom": {
                   "secretKeyRef": {
                     "name": "aws-s3-logger",
-                    "key": "awsSecret"
+                    "key": "awsKey"
                   }
                 }
               },
@@ -19,7 +19,7 @@
                 "valueFrom": {
                   "secretKeyRef": {
                     "name": "aws-s3-logger",
-                    "key": "awsKey"
+                    "key": "awsSecret"
                   }
                 }
               },
