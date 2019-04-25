@@ -3,6 +3,7 @@ package com.atomist.rolar.infra.web.security
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.filter.GenericFilterBean
 import java.io.IOException
@@ -20,7 +21,7 @@ class JwtGateFilter(val authServerBaseUrl: String) : GenericFilterBean() {
                           res: ServletResponse,
                           chain: FilterChain) {
         val httpRequest = req as HttpServletRequest
-        val authCookie = httpRequest.cookies.firstOrNull { it.name == "access_token"}
+        val authCookie = httpRequest.cookies?.firstOrNull { it.name == "access_token"}
         val authHeader = httpRequest.getHeader("Authorization")
         val authParam = httpRequest.getParameter("auth")
         val auth = authCookie?.let {
@@ -46,19 +47,24 @@ class JwtGateFilter(val authServerBaseUrl: String) : GenericFilterBean() {
                 }
             }"""
             val authRequest = HttpEntity("{\"query\": \"$query\"}", headers)
-            val authResponse = RestTemplate().postForEntity(
-                    "$authServerBaseUrl/graphql",
-                    authRequest,
-                    AuthResult::class.java)
-            val persons = authResponse.body?.data?.personByIdentity ?: listOf()
-            val validRoots = persons.map { p -> p.team?.id }.filterNotNull()
+            try {
+                val authResponse = RestTemplate().postForEntity(
+                        "$authServerBaseUrl/graphql",
+                        authRequest,
+                        AuthResult::class.java)
+                val persons = authResponse.body?.data?.personByIdentity ?: listOf()
+                val validRoots = persons.map { p -> p.team?.id }.filterNotNull()
 
-            val root = req.servletPath.substringAfter("/logs/").substringBefore("/")
-            if (validRoots.contains(root)) {
-                chain.doFilter(req, res)
-            } else {
-                (res as HttpServletResponse).sendError(HttpServletResponse.SC_UNAUTHORIZED,
-                        "Invalid token for root '$root'")
+                val root = req.servletPath.substringAfter("/logs/").substringBefore("/")
+                if (validRoots.contains(root)) {
+                    chain.doFilter(req, res)
+                } else {
+                    (res as HttpServletResponse).sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                            "Invalid token for root '$root'")
+                }
+            } catch(ex: HttpClientErrorException) {
+                (res as HttpServletResponse).sendError(ex.rawStatusCode,
+                        "Retrieving authentication details failed")
             }
         } else {
             chain.doFilter(req, res)

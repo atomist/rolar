@@ -18,6 +18,7 @@ class SecurityConfig(val s3LoggingServiceProperties: S3LoggingServiceProperties)
         if (baseUrl.isEmpty()) {
             registrationBean.isEnabled = false
         }
+        registrationBean.order = 1
         return registrationBean
     }
 }
