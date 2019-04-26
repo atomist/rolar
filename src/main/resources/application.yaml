@@ -37,3 +37,9 @@ spring:
   mvc:
     async:
       request-timeout: 1800000
+resilience4j.ratelimiter:
+  limiters:
+    rolar:
+      limitForPeriod: 100
+      limitRefreshPeriodInMillis: 1000
+      timeoutInMillis: 1000
