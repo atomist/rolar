@@ -21,7 +21,9 @@ class CorsConfig(private val webProperties: WebProperties) {
         val source = UrlBasedCorsConfigurationSource()
         val config = CorsConfiguration()
         config.allowCredentials = ALLOW_CREDENTIALS
-        config.addAllowedOrigin(webProperties.allowedOrigin)
+        webProperties.allowedOrigin.split(",").forEach {
+            config.addAllowedOrigin(it)
+        }
         ALLOWED_HEADERS.forEach {
             config.addAllowedHeader(it);
             config.addExposedHeader(it)
