@@ -53,6 +53,16 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
         return sseEmitter
     }
 
+    @GetMapping(value = ["api/reactive/plain/**"])
+    fun getPlainLogs(@RequestParam prioritize: Int? = 0,
+                @RequestParam historyLimit: Int? = 0,
+                request: HttpServletRequest): SseEmitter {
+        val path = constructPathFromUriWildcardSuffix(request)
+        val sseEmitter = SseEmitter()
+        streamLogs.getLogs(StreamLogsRequest(path, prioritize ?: 0, historyLimit ?: 0), SsePlainPublisher(sseEmitter))
+        return sseEmitter
+    }
+
     @RequestMapping(value = ["api/logs/**"], method = arrayOf(RequestMethod.POST))
     fun postLog(@RequestParam closed: Boolean? = false,
                 @RequestBody incomingLog: IncomingLog,
@@ -74,6 +84,22 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
         override fun accept(t: LogResults) {
             try {
                 sseEmitter.send(t)
+                if (t.lastKey.isClosed) {
+                    sseEmitter.complete()
+                }
+            } catch(ioEx: IOException) {
+                // ignore, somebody probably closed the connection
+                sseEmitter.complete()
+            }
+        }
+
+    }
+
+    class SsePlainPublisher(val sseEmitter: SseEmitter): Consumer<LogResults> {
+        override fun accept(t: LogResults) {
+            try {
+                val message = t.logs.map { it.message }.joinToString("\n")
+                sseEmitter.send(message)
                 if (t.lastKey.isClosed) {
                     sseEmitter.complete()
                 }
