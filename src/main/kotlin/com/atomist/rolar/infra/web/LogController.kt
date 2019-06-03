@@ -100,7 +100,7 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
         override fun accept(t: LogResults) {
             try {
                 val message = t.logs.map { it.message }.joinToString("\n")
-                emitter.send(message)
+                emitter.send(message + "\n")
                 if (t.lastKey.isClosed) {
                     emitter.complete()
                 }
