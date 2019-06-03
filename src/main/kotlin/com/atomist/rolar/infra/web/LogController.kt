@@ -99,7 +99,7 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
     class PlainPublisher(val emitter: ResponseBodyEmitter): Consumer<LogResults> {
         override fun accept(t: LogResults) {
             try {
-                val message = t.logs.map { it.message }.joinToString("\n")
+                val message = t.logs.map { it.message.trimEnd() }.joinToString("\n")
                 emitter.send(message + "\n")
                 if (t.lastKey.isClosed) {
                     emitter.complete()
