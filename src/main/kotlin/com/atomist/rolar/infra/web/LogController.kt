@@ -53,7 +53,7 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
         return sseEmitter
     }
 
-    @GetMapping(value = ["api/reactive/plain/**"])
+    @GetMapping(value = ["api/reactive/plain/logs/**"])
     fun getPlainLogs(@RequestParam prioritize: Int? = 0,
                 @RequestParam historyLimit: Int? = 0,
                 request: HttpServletRequest): SseEmitter {
