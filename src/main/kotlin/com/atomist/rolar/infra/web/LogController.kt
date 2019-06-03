@@ -7,6 +7,7 @@ import com.atomist.rolar.domain.model.LogResults
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.HandlerMapping
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.io.IOException
 import java.util.*
@@ -56,11 +57,11 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
     @GetMapping(value = ["api/reactive/plain/logs/**"])
     fun getPlainLogs(@RequestParam prioritize: Int? = 0,
                 @RequestParam historyLimit: Int? = 0,
-                request: HttpServletRequest): SseEmitter {
+                request: HttpServletRequest): ResponseBodyEmitter {
         val path = constructPathFromUriWildcardSuffix(request)
-        val sseEmitter = SseEmitter()
-        streamLogs.getLogs(StreamLogsRequest(path, prioritize ?: 0, historyLimit ?: 0), SsePlainPublisher(sseEmitter))
-        return sseEmitter
+        val emitter = ResponseBodyEmitter()
+        streamLogs.getLogs(StreamLogsRequest(path, prioritize ?: 0, historyLimit ?: 0), PlainPublisher(emitter))
+        return emitter
     }
 
     @RequestMapping(value = ["api/logs/**"], method = arrayOf(RequestMethod.POST))
@@ -95,17 +96,17 @@ constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, pr
 
     }
 
-    class SsePlainPublisher(val sseEmitter: SseEmitter): Consumer<LogResults> {
+    class PlainPublisher(val emitter: ResponseBodyEmitter): Consumer<LogResults> {
         override fun accept(t: LogResults) {
             try {
                 val message = t.logs.map { it.message }.joinToString("\n")
-                sseEmitter.send(message)
+                emitter.send(message)
                 if (t.lastKey.isClosed) {
-                    sseEmitter.complete()
+                    emitter.complete()
                 }
             } catch(ioEx: IOException) {
                 // ignore, somebody probably closed the connection
-                sseEmitter.complete()
+                emitter.complete()
             }
         }
 
