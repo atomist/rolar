@@ -29,3 +29,4 @@ EXPOSE 8080
 EXPOSE 8081
 
 COPY target/rolar.jar /opt/app/app.jar
+
