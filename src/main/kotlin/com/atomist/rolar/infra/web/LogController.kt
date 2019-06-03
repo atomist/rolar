@@ -18,7 +18,7 @@ import javax.servlet.http.HttpServletRequest
 @RestController
 class LogController @Autowired
 constructor(private var getLogs: GetLogs, private var streamLogs: StreamLogs, private var writeLog: WriteLog) {
-
+ 
     @RequestMapping("api/logs/**")
     fun getLog(@RequestParam prioritize: Int? = 0,
                @RequestParam historyLimit: Int? = 0,
