@@ -35,6 +35,10 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.retry</groupId>
+			<artifactId>spring-retry</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>com.fasterxml.jackson.module</groupId>
 			<artifactId>jackson-module-kotlin</artifactId>
 		</dependency>
@@ -44,16 +48,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.jetbrains.kotlin</groupId>
-			<artifactId>kotlin-stdlib-jdk8</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.jetbrains.kotlin</groupId>
 			<artifactId>kotlin-reflect</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.atomist</groupId>
-			<artifactId>spring-boot-agent</artifactId>
-			<version>[2.0.0,3.0.0)</version>
 		</dependency>
 		<dependency>
 			<groupId>io.micrometer</groupId>
@@ -94,6 +89,11 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<dependency>
+				<groupId>org.springframework.retry</groupId>
+				<artifactId>spring-retry</artifactId>
+				<version>1.2.4.RELEASE</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
@@ -114,50 +114,6 @@
 				</executions>
 			</plugin>
 			<plugin>
-				<artifactId>kotlin-maven-plugin</artifactId>
-				<version>${kotlin.version}</version>
-				<executions>
-					<execution>
-						<id>compile</id>
-						<phase>compile</phase>
-						<goals>
-							<goal>compile</goal>
-						</goals>
-						<configuration>
-							<sourceDirs>
-								<source>src/main/kotlin</source>
-								<source>target/generated-sources/kapt</source>
-								<source>target/generated-sources/kaptKotlin</source>
-							</sourceDirs>
-						</configuration>
-					</execution>
-					<execution>
-						<id>test-compile</id>
-						<phase>test-compile</phase>
-						<goals>
-							<goal>test-compile</goal>
-						</goals>
-					</execution>
-				</executions>
-				<groupId>org.jetbrains.kotlin</groupId>
-				<configuration>
-					<args>
-						<arg>-Xjsr305=strict</arg>
-					</args>
-					<compilerPlugins>
-						<plugin>spring</plugin>
-					</compilerPlugins>
-					<jvmTarget>1.8</jvmTarget>
-				</configuration>
-				<dependencies>
-					<dependency>
-						<groupId>org.jetbrains.kotlin</groupId>
-						<artifactId>kotlin-maven-allopen</artifactId>
-						<version>${kotlin.version}</version>
-					</dependency>
-				</dependencies>
-			</plugin>
-			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<dependencies>
@@ -173,6 +129,12 @@
 				<groupId>org.jetbrains.kotlin</groupId>
 				<version>${kotlin.version}</version>
 				<configuration>
+					<args>
+						<arg>-Xjsr305=strict</arg>
+					</args>
+					<compilerPlugins>
+						<plugin>spring</plugin>
+					</compilerPlugins>
 					<jvmTarget>1.8</jvmTarget>
 				</configuration>
 				<executions>
@@ -206,7 +168,9 @@
 						</goals>
 						<configuration>
 							<sourceDirs>
-								<sourceDir>src/main/kotlin</sourceDir>
+								<source>src/main/kotlin</source>
+								<source>target/generated-sources/kapt</source>
+								<source>target/generated-sources/kaptKotlin</source>
 							</sourceDirs>
 						</configuration>
 					</execution>
@@ -222,6 +186,13 @@
 						</configuration>
 					</execution>
 				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>org.jetbrains.kotlin</groupId>
+						<artifactId>kotlin-maven-allopen</artifactId>
+						<version>${kotlin.version}</version>
+					</dependency>
+				</dependencies>
 			</plugin>
 			<plugin>
 				<groupId>pl.project13.maven</groupId>
