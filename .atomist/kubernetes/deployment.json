@@ -9,8 +9,8 @@
                 "name": "AWS_ACCESS_KEY_ID",
                 "valueFrom": {
                   "secretKeyRef": {
-                    "name": "aws-s3-logger",
-                    "key": "awsKey"
+                    "name": "rolar",
+                    "key": "access_key"
                   }
                 }
               },
@@ -18,8 +18,8 @@
                 "name": "AWS_SECRET_ACCESS_KEY",
                 "valueFrom": {
                   "secretKeyRef": {
-                    "name": "aws-s3-logger",
-                    "key": "awsSecret"
+                    "name": "rolar",
+                    "key": "secret_key"
                   }
                 }
               },
@@ -27,8 +27,8 @@
                 "name": "S3_LOGGING_BUCKET",
                 "valueFrom": {
                   "secretKeyRef": {
-                    "name": "aws-s3-logger",
-                    "key": "s3Bucket"
+                    "name": "rolar",
+                    "key": "s3_bucket"
                   }
                 }
               },
@@ -36,8 +36,8 @@
                 "name": "CORS_ALLOWED_ORIGIN",
                 "valueFrom": {
                   "secretKeyRef": {
-                    "name": "aws-s3-logger",
-                    "key": "corsAllowedOrigin"
+                    "name": "rolar",
+                    "key": "cors_allowed_origin"
                   }
                 }
               },
@@ -45,8 +45,8 @@
                 "name": "AUTH_SERVER_BASE_URL",
                 "valueFrom": {
                   "secretKeyRef": {
-                    "name": "aws-s3-logger",
-                    "key": "authUrl"
+                    "name": "rolar",
+                    "key": "auth_url"
                   }
                 }
               }
