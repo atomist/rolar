@@ -31,6 +31,10 @@ management:
         http.server.requests: true
       percentiles:
         http.server.requests: 0.95, 0.99
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
 server:
   port: 8080
 spring:
